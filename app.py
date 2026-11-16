@@ -173,7 +173,58 @@ if bereich == "🏆 Turniere & Statistiken":
 
             else:
                 st.warning("Bitte Gegner und Ergebnis eintragen.")
+import pandas as pd
 
+    # Fortschrittsdiagramm
+
+    st.divider()
+    st.subheader("📊 Meine Entwicklung")
+
+    if matches:
+
+        monatliche_daten = {}
+
+        for match in matches:
+            monat = match["datum"][:7]
+
+            if monat not in monatliche_daten:
+                monatliche_daten[monat] = {
+                    "Siege": 0,
+                    "Niederlagen": 0
+                }
+
+            if match["ausgang"] == "Gewonnen":
+                monatliche_daten[monat]["Siege"] += 1
+            else:
+                monatliche_daten[monat]["Niederlagen"] += 1
+
+        # Tabelle für das Diagramm erstellen
+
+        df = pd.DataFrame.from_dict(
+            monatliche_daten,
+            orient="index"
+        )
+
+        df = df.sort_index()
+
+        # Siegquote berechnen
+
+        df["Siegquote (%)"] = (
+            df["Siege"] /
+            (df["Siege"] + df["Niederlagen"]) * 100
+        )
+
+        st.write("**Siege und Niederlagen pro Monat**")
+        st.bar_chart(df[["Siege", "Niederlagen"]])
+
+        st.write("**Entwicklung meiner Siegquote**")
+        st.line_chart(df[["Siegquote (%)"]])
+
+        st.write("**Monatliche Übersicht**")
+        st.dataframe(df, use_container_width=True)
+
+    else:
+        st.info("Trage zuerst Matches ein, damit dein Fortschritt angezeigt werden kann.")
     # Matchübersicht
 
     st.divider()
