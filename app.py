@@ -472,7 +472,7 @@ elif bereich == "📈 Verbesserung & Training":
     # TENNIS-TAGEBUCH
     # ---------------------------------
 
-    st.header("📓 Mein Tennis-Tagebuch")
+    st.header("📒 Mein Tennis-Tagebuch")
 
     st.write(
         "Halte deine Trainingseinheiten fest und "
