@@ -1,12 +1,14 @@
+
 import streamlit as st
 import pandas as pd
 import json
 import os
+import uuid
 from datetime import date
 
-# =====================================
+# ---------------------------------
 # 1. GRUNDEINSTELLUNGEN
-# =====================================
+# ---------------------------------
 
 st.set_page_config(
     page_title="Tennis Analysis",
@@ -17,16 +19,17 @@ st.set_page_config(
 DATEI = "tennis_daten.json"
 
 
-# =====================================
+# ---------------------------------
 # 2. DATEN LADEN UND SPEICHERN
-# =====================================
+# ---------------------------------
 
 def daten_laden():
     standard = {
         "matches": [],
         "turniere": [],
         "termine": [],
-        "trainingsziel": ""
+        "trainingsziel": "",
+        "video_url": ""
     }
 
     if os.path.exists(DATEI):
@@ -37,6 +40,12 @@ def daten_laden():
             for key, value in standard.items():
                 if key not in daten:
                     daten[key] = value
+
+            # Eindeutige IDs für vorhandene Einträge ergänzen
+            for bereich in ["matches", "turniere", "termine"]:
+                for eintrag in daten[bereich]:
+                    if "_id" not in eintrag:
+                        eintrag["_id"] = str(uuid.uuid4())
 
             return daten
 
@@ -62,12 +71,47 @@ if "daten" not in st.session_state:
 daten = st.session_state.daten
 
 
-# =====================================
-# 3. TITEL UND NAVIGATION
-# =====================================
+# ---------------------------------
+# 3. PASSWORTSCHUTZ
+# ---------------------------------
+
+def loeschschutz(key):
+    freigabe = f"freigabe_{key}"
+
+    if st.session_state.get(freigabe, False):
+        return True
+
+    with st.expander("🔒 Löschen – Passwort erforderlich"):
+        passwort = st.text_input(
+            "Passwort eingeben",
+            type="password",
+            key=f"passwort_{key}"
+        )
+
+        if st.button(
+            "Freischalten",
+            key=f"freischalten_{key}"
+        ):
+            try:
+                richtiges_passwort = st.secrets["loesch_passwort"]
+            except Exception:
+                st.error("Das Passwort wurde noch nicht eingerichtet.")
+                return False
+
+            if passwort == richtiges_passwort:
+                st.session_state[freigabe] = True
+                st.rerun()
+            else:
+                st.error("Falsches Passwort!")
+
+    return False
+
+
+# ---------------------------------
+# 4. TITEL UND NAVIGATION
+# ---------------------------------
 
 st.title("🎾 Tennis Analysis")
-
 st.write("Dein persönliches Tennis-Portal.")
 
 bereich = st.sidebar.radio(
@@ -80,9 +124,9 @@ bereich = st.sidebar.radio(
 )
 
 
-# =====================================
-# 4. TURNIERE UND STATISTIKEN
-# =====================================
+# =================================
+# 5. TURNIERE UND STATISTIKEN
+# =================================
 
 if bereich == "🏆 Turniere & Statistiken":
 
@@ -102,10 +146,7 @@ if bereich == "🏆 Turniere & Statistiken":
 
     gesamt = len(matches)
 
-    quote = (
-        siege / gesamt * 100
-        if gesamt > 0 else 0
-    )
+    quote = siege / gesamt * 100 if gesamt > 0 else 0
 
     col1, col2, col3 = st.columns(3)
 
@@ -116,111 +157,115 @@ if bereich == "🏆 Turniere & Statistiken":
     st.divider()
 
     # ---------------------------------
-    # NEUES TURNIER
+    # TURNIER HINZUFÜGEN
     # ---------------------------------
 
-    st.subheader("🏆 Neues Turnier eintragen")
+    st.subheader("➕ Neues Turnier eintragen")
 
-    with st.form("turnier_form"):
+    with st.form("turnier_formular"):
 
         turniername = st.text_input("Name des Turniers")
-        turnierdatum = st.date_input(
-            "Turnierdatum",
-            value=date.today()
-        )
-        turnierort = st.text_input("Turnierort")
+        turnierdatum = st.date_input("Datum des Turniers")
+        turnierort = st.text_input("Ort")
 
-        turnier_speichern = st.form_submit_button(
+        turnier_absenden = st.form_submit_button(
             "Turnier speichern"
         )
 
-        if turnier_speichern:
+        if turnier_absenden:
 
             if turniername.strip():
 
-                daten["turniere"].append({
-                    "name": turniername.strip(),
+                neues_turnier = {
+                    "_id": str(uuid.uuid4()),
+                    "name": turniername,
                     "datum": turnierdatum.isoformat(),
                     "ort": turnierort
-                })
+                }
+
+                daten["turniere"].append(neues_turnier)
 
                 daten["termine"].append({
-                    "titel": turniername.strip(),
+                    "_id": str(uuid.uuid4()),
+                    "titel": turniername,
                     "datum": turnierdatum.isoformat(),
                     "typ": "Turnier"
                 })
 
                 daten_speichern()
-                st.success("Turnier gespeichert!")
+
+                st.success("Turnier wurde gespeichert!")
                 st.rerun()
 
             else:
-                st.warning("Bitte einen Turniernamen eingeben.")
+                st.warning("Bitte gib einen Turniernamen ein.")
 
     st.divider()
 
     # ---------------------------------
-    # NEUES MATCH
+    # MATCH HINZUFÜGEN
     # ---------------------------------
 
-    st.subheader("🎾 Neues Match eintragen")
+    st.subheader("➕ Neues Match eintragen")
 
-    turniernamen = ["Kein Turnier"] + [
+    turniernamen = [
         t["name"] for t in daten["turniere"]
     ]
 
-    with st.form("match_form"):
+    turnier_auswahl = ["Kein Turnier"] + turniernamen
+
+    with st.form("match_formular"):
 
         gegner = st.text_input("Name des Gegners")
-
-        matchdatum = st.date_input(
-            "Datum des Matches",
-            value=date.today()
-        )
-
+        matchdatum = st.date_input("Datum des Matches")
         ergebnis = st.text_input(
             "Ergebnis (z. B. 6:4, 6:3)"
         )
 
-        turnier = st.selectbox(
+        match_turnier = st.selectbox(
             "Turnier",
-            turniernamen
+            turnier_auswahl
         )
 
         ausgang = st.selectbox(
-            "Matchausgang",
+            "Wie ist das Match ausgegangen?",
             ["Gewonnen", "Verloren"]
         )
 
-        match_speichern = st.form_submit_button(
+        match_absenden = st.form_submit_button(
             "Match speichern"
         )
 
-        if match_speichern:
+        if match_absenden:
 
             if gegner.strip() and ergebnis.strip():
 
-                daten["matches"].append({
-                    "gegner": gegner.strip(),
+                neues_match = {
+                    "_id": str(uuid.uuid4()),
+                    "gegner": gegner,
                     "datum": matchdatum.isoformat(),
-                    "ergebnis": ergebnis.strip(),
+                    "ergebnis": ergebnis,
                     "ausgang": ausgang,
-                    "turnier": turnier
-                })
+                    "turnier": match_turnier
+                }
+
+                daten["matches"].append(neues_match)
 
                 daten["termine"].append({
-                    "titel": f"Match gegen {gegner.strip()}",
+                    "_id": str(uuid.uuid4()),
+                    "titel": f"Match gegen {gegner}",
                     "datum": matchdatum.isoformat(),
                     "typ": "Match"
                 })
 
                 daten_speichern()
-                st.success("Match gespeichert!")
+
+                st.success("Match wurde gespeichert!")
                 st.rerun()
 
             else:
                 st.warning(
-                    "Bitte Gegner und Ergebnis eingeben."
+                    "Bitte Gegner und Ergebnis eintragen."
                 )
 
     st.divider()
@@ -231,63 +276,48 @@ if bereich == "🏆 Turniere & Statistiken":
 
     st.subheader("📊 Meine Entwicklung")
 
-    if matches:
+    if daten["matches"]:
 
-        monatliche_daten = {}
+        monatsdaten = {}
 
-        for match in matches:
+        for m in daten["matches"]:
 
-            monat = match["datum"][:7]
+            monat = m["datum"][:7]
 
-            if monat not in monatliche_daten:
-                monatliche_daten[monat] = {
+            if monat not in monatsdaten:
+                monatsdaten[monat] = {
                     "Siege": 0,
                     "Niederlagen": 0
                 }
 
-            if match["ausgang"] == "Gewonnen":
-                monatliche_daten[monat]["Siege"] += 1
+            if m["ausgang"] == "Gewonnen":
+                monatsdaten[monat]["Siege"] += 1
             else:
-                monatliche_daten[monat]["Niederlagen"] += 1
+                monatsdaten[monat]["Niederlagen"] += 1
 
         df = pd.DataFrame.from_dict(
-            monatliche_daten,
+            monatsdaten,
             orient="index"
         )
 
         df.index.name = "Monat"
         df = df.sort_index()
 
-        df["Siegquote (%)"] = (
+        df["Siegquote"] = (
             df["Siege"] /
             (df["Siege"] + df["Niederlagen"]) * 100
         )
 
-        st.write("**Siege und Niederlagen pro Monat**")
+        st.write("Siege und Niederlagen pro Monat")
+        st.bar_chart(df[["Siege", "Niederlagen"]])
 
-        st.bar_chart(
-            df[["Siege", "Niederlagen"]]
-        )
+        st.write("Entwicklung deiner Siegquote")
+        st.line_chart(df["Siegquote"])
 
-        st.write("**Entwicklung meiner Siegquote**")
-
-        st.line_chart(
-            df[["Siegquote (%)"]]
-        )
-
-        st.write("**Monatliche Übersicht**")
-
-        st.dataframe(
-            df,
-            use_container_width=True
-        )
+        st.dataframe(df)
 
     else:
-
-        st.info(
-            "Trage zuerst Matches ein, "
-            "damit dein Fortschritt angezeigt wird."
-        )
+        st.info("Trage Matches ein, um deinen Fortschritt zu sehen.")
 
     st.divider()
 
@@ -295,40 +325,47 @@ if bereich == "🏆 Turniere & Statistiken":
     # MATCHÜBERSICHT
     # ---------------------------------
 
-    st.subheader("🎾 Meine Spielergebnisse")
+    st.subheader("🎾 Matchübersicht")
 
-    if matches:
+    if daten["matches"]:
 
-        for i in range(len(matches) - 1, -1, -1):
+        for match in reversed(daten["matches"]):
 
-            match = matches[i]
+            match_id = match["_id"]
 
             with st.expander(
-                f"{match['datum']} – gegen "
-                f"{match['gegner']} ({match['ausgang']})"
+                f"{match['gegner']} – {match['datum']}"
             ):
 
                 st.write("Ergebnis:", match["ergebnis"])
+                st.write("Ausgang:", match["ausgang"])
                 st.write("Turnier:", match["turnier"])
 
-                if st.button(
-                    "Match löschen",
-                    key=f"delete_match_{i}"
-                ):
+                if loeschschutz(f"match_{match_id}"):
 
-                    daten["matches"].pop(i)
-                    daten_speichern()
-                    st.rerun()
+                    if st.button(
+                        "🗑️ Match löschen",
+                        key=f"delete_match_{match_id}"
+                    ):
+
+                        daten["matches"] = [
+                            m for m in daten["matches"]
+                            if m["_id"] != match_id
+                        ]
+
+                        st.session_state.pop(
+                            f"freigabe_match_{match_id}",
+                            None
+                        )
+
+                        daten_speichern()
+                        st.success("Match gelöscht!")
+                        st.rerun()
 
     else:
-
         st.info("Noch keine Matches eingetragen.")
 
     st.divider()
-
-    # ---------------------------------
-    # TURNIERÜBERSICHT
-    # ---------------------------------
 
     # ---------------------------------
     # TURNIERÜBERSICHT
@@ -338,9 +375,9 @@ if bereich == "🏆 Turniere & Statistiken":
 
     if daten["turniere"]:
 
-        for i in range(len(daten["turniere"]) - 1, -1, -1):
+        for turnier in reversed(daten["turniere"]):
 
-            turnier = daten["turniere"][i]
+            turnier_id = turnier["_id"]
 
             with st.expander(
                 f"{turnier['name']} – {turnier['datum']}"
@@ -348,88 +385,84 @@ if bereich == "🏆 Turniere & Statistiken":
 
                 st.write("Ort:", turnier["ort"])
 
-                if st.button(
-                    "🗑️ Turnier löschen",
-                    key=f"delete_turnier_{i}"
-                ):
+                if loeschschutz(f"turnier_{turnier_id}"):
 
-                    turniername = turnier["name"]
+                    if st.button(
+                        "🗑️ Turnier löschen",
+                        key=f"delete_turnier_{turnier_id}"
+                    ):
 
-                    daten["turniere"].pop(i)
+                        turniername = turnier["name"]
+                        turnierdatum = turnier["datum"]
 
-                    # Zugehörige Kalendertermine entfernen
-                    daten["termine"] = [
-                        t for t in daten["termine"]
-                        if not (
-                            t["typ"] == "Turnier"
-                            and t["titel"] == turniername
-                            and t["datum"] == turnier["datum"]
+                        daten["turniere"] = [
+                            t for t in daten["turniere"]
+                            if t["_id"] != turnier_id
+                        ]
+
+                        # Zugehörigen Turnier-Kalendereintrag entfernen
+                        daten["termine"] = [
+                            t for t in daten["termine"]
+                            if not (
+                                t["typ"] == "Turnier"
+                                and t["titel"] == turniername
+                                and t["datum"] == turnierdatum
+                            )
+                        ]
+
+                        st.session_state.pop(
+                            f"freigabe_turnier_{turnier_id}",
+                            None
                         )
-                    ]
 
-                    daten_speichern()
-                    st.success("Turnier gelöscht!")
-                    st.rerun()
+                        daten_speichern()
+                        st.success("Turnier gelöscht!")
+                        st.rerun()
 
     else:
-
         st.info("Noch keine Turniere eingetragen.")
 
-# =====================================
-# 5. VERBESSERUNG UND TRAINING
-# =====================================
+
+# =================================
+# 6. VERBESSERUNG UND TRAINING
+# =================================
 
 elif bereich == "📈 Verbesserung & Training":
 
     st.header("📈 Verbesserung & Training")
 
-    st.write(
-        "Arbeite gezielt an deiner Tennistechnik."
-    )
+    st.subheader("🎾 Trainingstipps")
 
     trainingsbereiche = {
-        "🎾 Aufschlag":
-            "Verbessere Technik, Konstanz und Platzierung.",
-
-        "🏸 Vorhand":
-            "Trainiere Kontrolle, Länge und Präzision.",
-
-        "🎾 Rückhand":
-            "Arbeite an Sicherheit und Genauigkeit.",
-
-        "🏃 Beinarbeit":
-            "Verbessere Schnelligkeit und Positionierung.",
-
-        "🧠 Taktik":
-            "Lerne, deine Gegner besser zu lesen.",
-
-        "💪 Mentales Training":
-            "Trainiere Konzentration und Ruhe."
+        "Aufschlag": "Achte auf einen gleichmäßigen Ballwurf und einen kontrollierten Bewegungsablauf.",
+        "Vorhand": "Arbeite an deinem Treffpunkt vor dem Körper und einer guten Vorbereitung.",
+        "Rückhand": "Achte auf eine stabile Körperposition und einen sauberen Treffpunkt.",
+        "Beinarbeit": "Versuche, dich rechtzeitig zum Ball zu bewegen und nach dem Schlag wieder bereit zu sein.",
+        "Taktik": "Beobachte die Stärken und Schwächen deines Gegners und spiele bewusst.",
+        "Mentales Training": "Setze dir kleine Ziele und konzentriere dich auf den nächsten Punkt."
     }
 
-    st.subheader("Trainingsbereiche")
+    for thema, tipp in trainingsbereiche.items():
 
-    for name, beschreibung in trainingsbereiche.items():
-
-        with st.expander(name):
-            st.write(beschreibung)
+        with st.expander(thema):
+            st.write(tipp)
 
     st.divider()
 
     # ---------------------------------
-    # TRAININGSZIELE
+    # TRAININGSZIEL
     # ---------------------------------
 
-    st.subheader("🎯 Meine Trainingsziele")
+    st.subheader("🎯 Mein Trainingsziel")
 
-    ziel = st.text_area(
+    trainingsziel = st.text_area(
         "Woran möchtest du arbeiten?",
-        value=daten["trainingsziel"]
+        value=daten.get("trainingsziel", "")
     )
 
     if st.button("Trainingsziel speichern"):
 
-        daten["trainingsziel"] = ziel
+        daten["trainingsziel"] = trainingsziel
         daten_speichern()
 
         st.success("Trainingsziel gespeichert!")
@@ -443,85 +476,70 @@ elif bereich == "📈 Verbesserung & Training":
     st.subheader("🎥 Videoanalyse")
 
     video_url = st.text_input(
-        "Link zu einem Trainingsvideo"
+        "Link zu deinem Trainingsvideo",
+        value=daten.get("video_url", "")
     )
 
-    if st.button("Video öffnen"):
+    if st.button("Videolink speichern"):
 
-        if video_url.startswith(("https://", "http://")):
+        daten["video_url"] = video_url
+        daten_speichern()
 
-            st.link_button(
-                "Trainingsvideo ansehen",
-                video_url
-            )
+        st.success("Videolink gespeichert!")
 
-        else:
-
-            st.warning("Bitte einen gültigen Link eingeben.")
-
-    st.caption(
-        "Später können wir hier eigene Videos hochladen "
-        "und deine Technik analysieren."
-    )
+    if daten.get("video_url"):
+        st.link_button(
+            "🎬 Video öffnen",
+            daten["video_url"]
+        )
 
 
-# =====================================
-# 6. KALENDER UND PLANUNG
-# =====================================
+# =================================
+# 7. KALENDER UND PLANUNG
+# =================================
 
 elif bereich == "📅 Kalender & Planung":
 
-    st.header("📅 Mein Tennis-Kalender")
-
-    st.write(
-        "Turniere und Matches werden automatisch "
-        "in deinen Kalender übernommen."
-    )
-
-    st.divider()
+    st.header("📅 Kalender & Planung")
 
     # ---------------------------------
-    # NEUEN TERMIN ERSTELLEN
+    # NEUEN TERMIN HINZUFÜGEN
     # ---------------------------------
 
-    st.subheader("📅 Neuen Termin hinzufügen")
+    st.subheader("➕ Neuen Termin eintragen")
 
-    with st.form("termin_form"):
+    with st.form("termin_formular"):
 
-        titel = st.text_input("Name des Termins")
+        terminname = st.text_input("Name des Termins")
+        termindatum = st.date_input("Datum des Termins")
 
-        termin_datum = st.date_input(
-            "Datum",
-            value=date.today(),
-            key="termin_datum"
-        )
-
-        typ = st.selectbox(
+        terminart = st.selectbox(
             "Art des Termins",
-            ["Training", "Event", "Sonstiges"]
+            ["Training", "Sonstiges"]
         )
 
-        termin_speichern = st.form_submit_button(
+        termin_absenden = st.form_submit_button(
             "Termin speichern"
         )
 
-        if termin_speichern:
+        if termin_absenden:
 
-            if titel.strip():
+            if terminname.strip():
 
                 daten["termine"].append({
-                    "titel": titel.strip(),
-                    "datum": termin_datum.isoformat(),
-                    "typ": typ
+                    "_id": str(uuid.uuid4()),
+                    "titel": terminname,
+                    "datum": termindatum.isoformat(),
+                    "typ": terminart
                 })
 
                 daten_speichern()
+
                 st.success("Termin gespeichert!")
                 st.rerun()
 
             else:
-
-                st.warning("Bitte einen Namen eingeben.")
+                st.warning("Bitte gib einen Namen ein.")
 
     st.divider()
 
@@ -529,72 +547,72 @@ elif bereich == "📅 Kalender & Planung":
     # KALENDERÜBERSICHT
     # ---------------------------------
 
-    st.subheader("📆 Meine nächsten Termine")
+    st.subheader("📆 Meine Termine")
 
-    alle_termine = sorted(
-        daten["termine"],
-        key=lambda x: x["datum"]
-    )
+    if daten["termine"]:
 
-    heute = date.today().isoformat()
+        termine_sortiert = sorted(
+            daten["termine"],
+            key=lambda t: t["datum"]
+        )
 
-    kommende_termine = [
-        t for t in alle_termine
-        if t["datum"] >= heute
-    ]
+        heute = date.today().isoformat()
 
-    if kommende_termine:
+        st.write("**Anstehende Termine**")
 
-        for i, termin in enumerate(kommende_termine):
+        kommende = [
+            t for t in termine_sortiert
+            if t["datum"] >= heute
+        ]
+
+        if kommende:
+
+            for termin in kommende:
+
+                st.write(
+                    f"📌 **{termin['datum']}** – "
+                    f"{termin['titel']} ({termin['typ']})"
+                )
+
+        else:
+            st.info("Keine anstehenden Termine.")
+
+        st.divider()
+
+        st.write("**Alle Termine verwalten**")
+
+        for termin in reversed(termine_sortiert):
+
+            termin_id = termin["_id"]
 
             with st.expander(
-                f"{termin['datum']} – {termin['titel']}"
+                f"{termin['titel']} – {termin['datum']}"
             ):
 
-                st.write("Kategorie:", termin["typ"])
+                st.write("Art:", termin["typ"])
 
+                # Kalendertermine bleiben ohne Passwort löschbar
                 if st.button(
-                    "Termin löschen",
-                    key=f"delete_termin_{i}"
+                    "🗑️ Termin löschen",
+                    key=f"delete_termin_{termin_id}"
                 ):
 
-                    daten["termine"].remove(termin)
+                    daten["termine"] = [
+                        t for t in daten["termine"]
+                        if t["_id"] != termin_id
+                    ]
+
                     daten_speichern()
+                    st.success("Termin gelöscht!")
                     st.rerun()
 
     else:
-
-        st.info("Keine kommenden Termine vorhanden.")
-
-    st.divider()
-
-    st.subheader("Alle Termine")
-
-    if alle_termine:
-
-        kalender_df = pd.DataFrame([
-            {
-                "Datum": t["datum"],
-                "Termin": t["titel"],
-                "Kategorie": t["typ"]
-            }
-            for t in alle_termine
-        ])
-
-        st.dataframe(
-            kalender_df,
-            use_container_width=True,
-            hide_index=True
-        )
-
-    else:
-
-        st.info("Dein Kalender ist noch leer.")
+        st.info("Noch keine Termine eingetragen.")
 
 
-# =====================================
-# 7. SEITENENDE
-# =====================================
+# ---------------------------------
+# 8. SIDEBAR
+# ---------------------------------
 
 st.sidebar.divider()
 st.sidebar.caption("🎾 Tennis Analysis")
