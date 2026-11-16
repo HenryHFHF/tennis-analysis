@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import json
@@ -29,7 +28,6 @@ def daten_laden():
         "matches": [],
         "turniere": [],
         "termine": [],
-        "trainingsziel": "",
         "video_url": "",
         "tagebuch": []
     }
@@ -44,7 +42,6 @@ def daten_laden():
                 if key not in daten:
                     daten[key] = value
 
-            # IDs für vorhandene Einträge ergänzen
             for bereich in ["matches", "turniere", "termine", "tagebuch"]:
 
                 for eintrag in daten[bereich]:
@@ -211,7 +208,6 @@ if bereich == "🏆 Turniere & Statistiken":
                 daten_speichern()
 
                 st.success("Turnier wurde gespeichert!")
-
                 st.rerun()
 
             else:
@@ -280,7 +276,6 @@ if bereich == "🏆 Turniere & Statistiken":
                 daten_speichern()
 
                 st.success("Match wurde gespeichert!")
-
                 st.rerun()
 
             else:
@@ -321,7 +316,6 @@ if bereich == "🏆 Turniere & Statistiken":
         )
 
         df.index.name = "Monat"
-
         df = df.sort_index()
 
         df["Siegquote"] = (
@@ -330,20 +324,15 @@ if bereich == "🏆 Turniere & Statistiken":
         )
 
         st.write("Siege und Niederlagen pro Monat")
-
         st.bar_chart(df[["Siege", "Niederlagen"]])
 
         st.write("Entwicklung deiner Siegquote")
-
         st.line_chart(df["Siegquote"])
 
         st.dataframe(df)
 
     else:
-
-        st.info(
-            "Trage Matches ein, um deinen Fortschritt zu sehen."
-        )
+        st.info("Trage Matches ein, um deinen Fortschritt zu sehen.")
 
     st.divider()
 
@@ -364,9 +353,7 @@ if bereich == "🏆 Turniere & Statistiken":
             ):
 
                 st.write("Ergebnis:", match["ergebnis"])
-
                 st.write("Ausgang:", match["ausgang"])
-
                 st.write("Turnier:", match["turnier"])
 
                 if loeschschutz(f"match_{match_id}"):
@@ -387,13 +374,10 @@ if bereich == "🏆 Turniere & Statistiken":
                         )
 
                         daten_speichern()
-
                         st.success("Match gelöscht!")
-
                         st.rerun()
 
     else:
-
         st.info("Noch keine Matches eingetragen.")
 
     st.divider()
@@ -424,7 +408,6 @@ if bereich == "🏆 Turniere & Statistiken":
                     ):
 
                         turniername = turnier["name"]
-
                         turnierdatum = turnier["datum"]
 
                         daten["turniere"] = [
@@ -432,7 +415,6 @@ if bereich == "🏆 Turniere & Statistiken":
                             if t["_id"] != turnier_id
                         ]
 
-                        # Zugehörige Turniertermine entfernen
                         daten["termine"] = [
                             t for t in daten["termine"]
                             if not (
@@ -448,13 +430,10 @@ if bereich == "🏆 Turniere & Statistiken":
                         )
 
                         daten_speichern()
-
                         st.success("Turnier gelöscht!")
-
                         st.rerun()
 
     else:
-
         st.info("Noch keine Turniere eingetragen.")
 
 
@@ -484,30 +463,7 @@ elif bereich == "📈 Verbesserung & Training":
     for thema, tipp in trainingsbereiche.items():
 
         with st.expander(thema):
-
             st.write(tipp)
-
-    st.divider()
-
-    # ---------------------------------
-    # TRAININGSZIEL
-    # ---------------------------------
-
-    st.subheader("🎯 Mein Trainingsziel")
-
-    trainingsziel = st.text_area(
-        "Woran möchtest du arbeiten?",
-        value=daten.get("trainingsziel", ""),
-        key="trainingsziel_eingabe"
-    )
-
-    if st.button("Trainingsziel speichern"):
-
-        daten["trainingsziel"] = trainingsziel
-
-        daten_speichern()
-
-        st.success("Trainingsziel gespeichert!")
 
     st.divider()
 
@@ -589,7 +545,6 @@ elif bereich == "📈 Verbesserung & Training":
                 st.rerun()
 
             else:
-
                 st.warning(
                     "Bitte fülle mindestens ein Feld aus."
                 )
@@ -619,31 +574,20 @@ elif bereich == "📈 Verbesserung & Training":
                 st.write("**Trainierte Bereiche:**")
 
                 if eintrag["themen"]:
-
                     st.write(", ".join(eintrag["themen"]))
-
                 else:
-
                     st.write("Keine Bereiche angegeben.")
 
                 st.write("**Was lief gut?**")
-
                 st.write(eintrag["gut"] or "Keine Angabe")
 
                 st.write("**Was möchte ich verbessern?**")
-
-                st.write(
-                    eintrag["verbessern"] or "Keine Angabe"
-                )
+                st.write(eintrag["verbessern"] or "Keine Angabe")
 
                 st.write("**Meine Erkenntnis:**")
-
-                st.write(
-                    eintrag["erkenntnis"] or "Keine Angabe"
-                )
+                st.write(eintrag["erkenntnis"] or "Keine Angabe")
 
     else:
-
         st.info(
             "Du hast noch keine Tagebucheinträge. "
             "Schreibe deinen ersten Trainingseintrag!"
@@ -665,7 +609,6 @@ elif bereich == "📈 Verbesserung & Training":
     if st.button("Videolink speichern"):
 
         daten["video_url"] = video_url
-
         daten_speichern()
 
         st.success("Videolink gespeichert!")
@@ -721,11 +664,9 @@ elif bereich == "📅 Kalender & Planung":
                 daten_speichern()
 
                 st.success("Termin gespeichert!")
-
                 st.rerun()
 
             else:
-
                 st.warning("Bitte gib einen Namen ein.")
 
     st.divider()
@@ -762,7 +703,6 @@ elif bereich == "📅 Kalender & Planung":
                 )
 
         else:
-
             st.info("Keine anstehenden Termine.")
 
         st.divider()
@@ -791,13 +731,10 @@ elif bereich == "📅 Kalender & Planung":
                     ]
 
                     daten_speichern()
-
                     st.success("Termin gelöscht!")
-
                     st.rerun()
 
     else:
-
         st.info("Noch keine Termine eingetragen.")
 
 
@@ -806,7 +743,5 @@ elif bereich == "📅 Kalender & Planung":
 # =================================
 
 st.sidebar.divider()
-
 st.sidebar.caption("🎾 Tennis Analysis")
-
 st.sidebar.caption("Dein persönliches Tennis-Portal")
