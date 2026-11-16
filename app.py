@@ -330,21 +330,50 @@ if bereich == "🏆 Turniere & Statistiken":
     # TURNIERÜBERSICHT
     # ---------------------------------
 
+    # ---------------------------------
+    # TURNIERÜBERSICHT
+    # ---------------------------------
+
     st.subheader("🏆 Meine Turniere")
 
     if daten["turniere"]:
 
-        for turnier in daten["turniere"]:
+        for i in range(len(daten["turniere"]) - 1, -1, -1):
 
-            st.write(
-                f"**{turnier['name']}** – "
-                f"{turnier['datum']} – {turnier['ort']}"
-            )
+            turnier = daten["turniere"][i]
+
+            with st.expander(
+                f"{turnier['name']} – {turnier['datum']}"
+            ):
+
+                st.write("Ort:", turnier["ort"])
+
+                if st.button(
+                    "🗑️ Turnier löschen",
+                    key=f"delete_turnier_{i}"
+                ):
+
+                    turniername = turnier["name"]
+
+                    daten["turniere"].pop(i)
+
+                    # Zugehörige Kalendertermine entfernen
+                    daten["termine"] = [
+                        t for t in daten["termine"]
+                        if not (
+                            t["typ"] == "Turnier"
+                            and t["titel"] == turniername
+                            and t["datum"] == turnier["datum"]
+                        )
+                    ]
+
+                    daten_speichern()
+                    st.success("Turnier gelöscht!")
+                    st.rerun()
 
     else:
 
         st.info("Noch keine Turniere eingetragen.")
-
 
 # =====================================
 # 5. VERBESSERUNG UND TRAINING
