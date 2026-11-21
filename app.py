@@ -122,10 +122,14 @@ def loeschschutz(key):
 # 4. TITEL UND NAVIGATION
 # =================================
 
-st.title("🎾 Tennis Analysis")
+col_logo, col_titel = st.columns([1, 4])
 
-st.write("Dein persönliches Tennis-Portal.")
+with col_logo:
+    st.image("logo.png", width=130)
 
+with col_titel:
+    st.title("H.F. Tennis Analysis")
+    st.write("Dein persönliches Tennis-Portal.")
 bereich = st.sidebar.radio(
     "Navigation",
     [
