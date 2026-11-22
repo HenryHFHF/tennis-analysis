@@ -43,41 +43,60 @@ def daten_laden():
         "tagebuch": []
     }
 
-    if os.path.exists(DATEI):
+    user = st.session_state.get("supabase_user")
 
-        try:
-            with open(DATEI, "r", encoding="utf-8") as f:
-                daten = json.load(f)
+    if user is None:
+        return standard
+
+    try:
+        client = supabase_verbindung(
+            st.session_state.get("supabase_token")
+        )
+
+        antwort = (
+            client.table("tennis_data")
+            .select("*")
+.eq("user_id", str(user.id))
+            .execute()
+        )
+
+        if antwort.data:
+            daten = antwort.data[0]["data"]
 
             for key, value in standard.items():
                 if key not in daten:
                     daten[key] = value
 
-            for bereich in ["matches", "turniere", "termine", "tagebuch"]:
-
-                for eintrag in daten[bereich]:
-
-                    if "_id" not in eintrag:
-                        eintrag["_id"] = str(uuid.uuid4())
-
             return daten
 
-        except (json.JSONDecodeError, OSError):
-            pass
+        return standard
 
-    return standard
+    except Exception as e:
+        st.error(f"Fehler beim Laden: {e}")
+        return standard
 
 
 def daten_speichern():
 
-    with open(DATEI, "w", encoding="utf-8") as f:
+    user = st.session_state.get("supabase_user")
 
-        json.dump(
-            st.session_state.daten,
-            f,
-            ensure_ascii=False,
-            indent=4
+    if user is None:
+        st.error("Bitte zuerst anmelden.")
+        return
+
+    try:
+        client = supabase_verbindung(
+            st.session_state.get("supabase_token")
         )
+
+        client.table("tennis_data").upsert({
+            "id": str(user.id),
+            "user_id": str(user.id),
+            "data": st.session_state.daten
+        }).execute()
+
+    except Exception as e:
+        st.error(f"Fehler beim Speichern: {e}")
 
 
 if "daten" not in st.session_state:
@@ -157,6 +176,7 @@ with col_login:
 
                     st.session_state.supabase_user = antwort.user
                     st.session_state.supabase_token = antwort.session.access_token
+                    st.session_state.pop("daten", None)
                     st.success("Erfolgreich angemeldet!")
                     st.rerun()
 
