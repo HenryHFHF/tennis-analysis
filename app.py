@@ -18,6 +18,13 @@ st.set_page_config(
 )
 
 DATEI = "tennis_daten.json"
+@st.cache_resource
+def supabase_verbindung():
+    url = st.secrets["supabase_url"]
+    key = st.secrets["supabase_key"]
+    return create_client(url, key)
+
+supabase = supabase_verbindung()
 
 
 # =================================
