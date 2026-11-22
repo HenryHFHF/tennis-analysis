@@ -131,6 +131,44 @@ def loeschschutz(key):
 # =================================
 # 4. TITEL UND NAVIGATION
 # =================================
+col_titel, col_login = st.columns([4, 1])
+
+with col_login:
+    if "supabase_user" not in st.session_state:
+        st.session_state.supabase_user = None
+
+    if st.session_state.supabase_user is None:
+
+        with st.popover("🔐 Login"):
+            email = st.text_input("E-Mail", key="login_email")
+            passwort = st.text_input(
+                "Passwort",
+                type="password",
+                key="login_passwort"
+            )
+
+            if st.button("Anmelden"):
+                try:
+                    client = supabase_verbindung()
+                    antwort = client.auth.sign_in_with_password({
+                        "email": email,
+                        "password": passwort
+                    })
+
+                    st.session_state.supabase_user = antwort.user
+                    st.session_state.supabase_token = antwort.session.access_token
+                    st.success("Erfolgreich angemeldet!")
+                    st.rerun()
+
+                except Exception:
+                    st.error("Anmeldung fehlgeschlagen. Bitte Daten prüfen.")
+
+    else:
+        st.write("Angemeldet")
+        if st.button("Abmelden"):
+            st.session_state.supabase_user = None
+            st.session_state.supabase_token = None
+            st.rerun()
 
 col_logo, col_titel = st.columns([1, 4])
 
