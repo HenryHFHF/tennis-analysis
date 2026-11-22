@@ -18,14 +18,16 @@ st.set_page_config(
 )
 
 DATEI = "tennis_daten.json"
-@st.cache_resource
-def supabase_verbindung():
+def supabase_verbindung(access_token=None):
     url = st.secrets["supabase_url"]
     key = st.secrets["supabase_key"]
-    return create_client(url, key)
 
-supabase = supabase_verbindung()
+    client = create_client(url, key)
 
+    if access_token:
+        client.postgrest.auth(access_token)
+
+    return client
 
 # =================================
 # 2. DATEN LADEN UND SPEICHERN
