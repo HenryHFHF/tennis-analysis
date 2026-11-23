@@ -302,11 +302,121 @@ bereich = st.radio(
     key="bereich_nav"
 )
 
+
 # =================================
-# 5. TURNIERE UND STATISTIKEN
+# 5. STARTSEITE
 # =================================
 
-if bereich == "🏆 Turniere & Statistiken":
+if bereich == "🏠 Startseite":
+
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #163d25, #0b0f0c);
+        padding: 55px 35px;
+        border-radius: 20px;
+        border: 1px solid #315d3d;
+        margin-top: 20px;
+        margin-bottom: 30px;
+    ">
+        <h1 style="font-size: 42px; color: white;">
+            Willkommen bei H.F. Tennis Analysis
+        </h1>
+        <p style="font-size: 20px; color: #d0e5d5;">
+            Dein persönliches Tennis-Portal.
+        </p>
+        <p style="font-size: 16px; color: #b5cbb9;">
+            Analysiere deine Matches, verbessere dein Spiel
+            und behalte deine Entwicklung im Blick.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.subheader("🎾 Dein Tennis auf einen Blick")
+
+    matches = daten["matches"]
+
+    siege = sum(
+        1 for m in matches
+        if m.get("ausgang") == "Gewonnen"
+    )
+
+    niederlagen = sum(
+        1 for m in matches
+        if m.get("ausgang") == "Verloren"
+    )
+
+    gesamt = len(matches)
+
+    quote = siege / gesamt * 100 if gesamt > 0 else 0
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("🎾 Matches", gesamt)
+    col2.metric("🏆 Siege", siege)
+    col3.metric("📊 Siegquote", f"{quote:.1f} %")
+
+    st.divider()
+
+    st.subheader("🚀 Deine Bereiche")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        with st.container(border=True):
+            st.markdown("### 🏆 Turniere & Statistiken")
+            st.write("Behalte deine Matches, Ergebnisse und Erfolge im Blick.")
+
+        with st.container(border=True):
+            st.markdown("### 📈 Verbesserung & Training")
+            st.write("Trainingsziele, Tipps und dein persönliches Tennis-Tagebuch.")
+
+    with col2:
+        with st.container(border=True):
+            st.markdown("### 📅 Kalender & Planung")
+            st.write("Alle deine Trainings, Matches und Turniere übersichtlich geplant.")
+
+        with st.container(border=True):
+            st.markdown("### 🎥 Videoanalyse")
+            st.write("Nutze deine Trainingsvideos, um dein Spiel zu analysieren.")
+
+    st.divider()
+
+    st.subheader("📅 Deine nächsten Termine")
+
+    heute = date.today().isoformat()
+
+    kommende_termine = sorted(
+        [
+            t for t in daten["termine"]
+            if t.get("datum", "") >= heute
+        ],
+        key=lambda t: t["datum"]
+    )
+
+    if kommende_termine:
+
+        for termin in kommende_termine[:5]:
+
+            st.markdown(
+                f"**{termin['datum']}** – "
+                f"{termin['titel']} "
+                f"({termin['typ']})"
+            )
+
+    else:
+        st.info("Du hast aktuell keine anstehenden Termine.")
+
+    st.divider()
+
+    st.caption("H.F. Tennis Analysis | Dein Tennis. Deine Entwicklung.")
+
+
+# =================================
+# 6. TURNIERE UND STATISTIKEN
+# =================================
+
+elif bereich == "🏆 Turniere & Statistiken":
+
 
     st.header("🏆 Turniere & Statistiken")
 
