@@ -1121,9 +1121,8 @@ elif bereich == "📈 Verbesserung & Training":
     else:
         st.info(
             "Du hast noch keine Tagebucheinträge. "
-            "Schreibe deinen ersten Trainingseintrag!"
-        )
-
+            "Schreibe deinen ersten 
+            
                 # ---------------------------------
                 # TAGEBUCHEINTRAG BEARBEITEN
                 # ---------------------------------
