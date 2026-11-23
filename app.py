@@ -297,9 +297,48 @@ if bereich == "🏆 Turniere & Statistiken":
 
     turnier_auswahl = ["Kein Turnier"] + turniernamen
 
+    match_art = st.selectbox(
+        "Match-Art auswählen",
+        ["Einzel", "Doppel"]
+    )
+
     with st.form("match_formular"):
 
-        gegner = st.text_input("Name des Gegners")
+        if match_art == "Einzel":
+            gegner = st.text_input("Name des Gegners")
+            partner = ""
+            gegner2 = ""
+
+        else:
+            partner = st.text_input(
+                "Vor- und Nachname des Partners"
+            )
+            gegner = st.text_input(
+                "Vor- und Nachname des 1. Gegners"
+            )
+            gegner2 = st.text_input(
+                "Vor- und Nachname des 2. Gegners"
+            )
+
+        matchdatum = st.date_input("Datum des Matches")
+
+        ergebnis = st.text_input(
+            "Ergebnis (z. B. 6:4, 6:3)"
+        )
+
+        match_turnier = st.selectbox(
+            "Turnier",
+            turnier_auswahl
+        )
+
+        ausgang = st.selectbox(
+            "Wie ist das Match ausgegangen?",
+            ["Gewonnen", "Verloren"]
+        )
+
+        match_absenden = st.form_submit_button(
+            "Match speichern"
+        )
 
         matchdatum = st.date_input("Datum des Matches")
 
@@ -323,11 +362,26 @@ if bereich == "🏆 Turniere & Statistiken":
 
         if match_absenden:
 
-            if gegner.strip() and ergebnis.strip():
+            if match_art == "Einzel":
+                eingaben_vollstaendig = (
+                    gegner.strip() and ergebnis.strip()
+                )
+            else:
+                eingaben_vollstaendig = (
+                    partner.strip()
+                    and gegner.strip()
+                    and gegner2.strip()
+                    and ergebnis.strip()
+                )
+
+            if eingaben_vollstaendig:
 
                 neues_match = {
                     "_id": str(uuid.uuid4()),
+                    "art": match_art,
                     "gegner": gegner,
+                    "partner": partner,
+                    "gegner2": gegner2,
                     "datum": matchdatum.isoformat(),
                     "ergebnis": ergebnis,
                     "ausgang": ausgang,
@@ -336,9 +390,14 @@ if bereich == "🏆 Turniere & Statistiken":
 
                 daten["matches"].append(neues_match)
 
+                if match_art == "Einzel":
+                    titel = f"Match gegen {gegner}"
+                else:
+                    titel = f"Match gegen {gegner} und {gegner2}"
+
                 daten["termine"].append({
                     "_id": str(uuid.uuid4()),
-                    "titel": f"Match gegen {gegner}",
+                    "titel": titel,
                     "datum": matchdatum.isoformat(),
                     "typ": "Match"
                 })
@@ -349,7 +408,9 @@ if bereich == "🏆 Turniere & Statistiken":
                 st.rerun()
 
             else:
-                st.warning("Bitte Gegner und Ergebnis eintragen.")
+                st.warning(
+                    "Bitte alle Namen und das Ergebnis eintragen."
+                )
 
     st.divider()
 
@@ -418,12 +479,51 @@ if bereich == "🏆 Turniere & Statistiken":
 
             match_id = match["_id"]
 
+            art = match.get("art", "Einzel")
+            partner = match.get("partner", "")
+            gegner = match.get("gegner", "")
+            gegner2 = match.get("gegner2", "")
+
+            gewonnen = match["ausgang"] == "Gewonnen"
+
+            if gewonnen:
+                symbol = "🏆"
+                farbe = "green"
+            else:
+                symbol = "🥈"
+                farbe = "red"
+
+            if art == "Doppel":
+                titel = f"Doppel – {partner} / {gegner} und {gegner2}"
+            else:
+                titel = f"Einzel – {gegner}"
+
             with st.expander(
-                f"{match['gegner']} – {match['datum']}"
+                f"{titel} – {match['datum']}"
             ):
 
-                st.write("Ergebnis:", match["ergebnis"])
-                st.write("Ausgang:", match["ausgang"])
+                st.markdown(f"**{art}**")
+
+                st.markdown(
+                    f"**Ausgang:** {symbol} **{match['ausgang']}**"
+                )
+
+                if art == "Doppel":
+                    st.markdown(
+                        f"**Partner:** **{partner}**"
+                    )
+                    st.markdown(
+                        f"**Gegner:** **{gegner} und {gegner2}**"
+                    )
+                else:
+                    st.markdown(
+                        f"**Gegner:** **{gegner}**"
+                    )
+
+                st.markdown(
+                    f":{farbe}[**Ergebnis: {match['ergebnis']}**]"
+                )
+
                 st.write("Turnier:", match["turnier"])
 
                 if loeschschutz(f"match_{match_id}"):
