@@ -170,6 +170,11 @@ with col_logo:
 with col_titel:
     st.title("H.F. Tennis Analysis")
     st.write("Dein persönliches Tennis-Portal.")
+if "daten" not in st.session_state:
+    st.session_state.daten = daten_laden()
+
+daten = st.session_state.daten
+
 bereich = st.sidebar.radio(
     "Navigation",
     [
