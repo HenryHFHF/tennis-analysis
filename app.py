@@ -545,15 +545,15 @@ else:
 st.divider()
 
 
-    # ---------------------------------
-    # TURNIERÜBERSICHT
-    # ---------------------------------
+# ---------------------------------
+# TURNIERÜBERSICHT
+# ---------------------------------
 
-    st.subheader("🏆 Meine Turniere")
+st.subheader("🏆 Meine Turniere")
 
-    if daten["turniere"]:
+if daten["turniere"]:
 
-        for turnier in reversed(daten["turniere"]):
+    for turnier in reversed(daten["turniere"]):
 
             turnier_id = turnier["_id"]
 
