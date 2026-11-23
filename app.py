@@ -1022,7 +1022,7 @@ elif bereich == "📈 Verbesserung & Training":
                             key=f"edit_tagebuch_themen_{eintrag_id}"
                         )
 
-                                                gut_neu = st.text_area(
+                        gut_neu = st.text_area(
                             "Was lief heute gut?",
                             value=eintrag.get("gut", ""),
                             key=f"edit_tagebuch_gut_{eintrag_id}"
