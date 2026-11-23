@@ -1118,7 +1118,7 @@ elif bereich == "📈 Verbesserung & Training":
                     st.success("Eintrag gelöscht!")
                     st.rerun()
 
-     else:
+    else:
         st.info(
             "Du hast noch keine Tagebucheinträge. "
             "Schreibe deinen ersten Trainingseintrag!"
