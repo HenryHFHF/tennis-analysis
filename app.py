@@ -1,4 +1,3 @@
-
 import streamlit as st
 from supabase import create_client
 import pandas as pd
@@ -1123,137 +1122,6 @@ elif bereich == "📈 Verbesserung & Training":
         )
 
     st.divider()
-                # ---------------------------------
-                # TAGEBUCHEINTRAG BEARBEITEN
-                # ---------------------------------
-
-                if st.button(
-                    "✏️ Eintrag bearbeiten",
-                    key=f"bearbeiten_tagebuch_{eintrag_id}"
-                ):
-                    st.session_state["aktiver_tagebuch_eintrag"] = eintrag_id
-                    st.rerun()
-
-                if st.session_state.get(
-                    "aktiver_tagebuch_eintrag"
-                ) == eintrag_id:
-
-                    if bearbeitungsschutz(f"tagebuch_{eintrag_id}"):
-
-                        st.divider()
-                        st.markdown("### ✏️ Trainingseintrag bearbeiten")
-
-                        datum_neu = st.date_input(
-                            "Trainingsdatum",
-                            value=date.fromisoformat(eintrag["datum"]),
-                            key=f"edit_tagebuch_datum_{eintrag_id}"
-                        )
-
-                        themen_neu = st.multiselect(
-                            "Trainierte Bereiche",
-                            [
-                                "Aufschlag",
-                                "Vorhand",
-                                "Rückhand",
-                                "Volley",
-                                "Beinarbeit",
-                                "Taktik",
-                                "Matchtraining",
-                                "Fitness",
-                                "Mentales Training"
-                            ],
-                            default=eintrag.get("themen", []),
-                            key=f"edit_tagebuch_themen_{eintrag_id}"
-                        )
-
-                        gut_neu = st.text_area(
-                            "Was lief heute gut?",
-                            value=eintrag.get("gut", ""),
-                            key=f"edit_tagebuch_gut_{eintrag_id}"
-                        )
-
-                        verbessern_neu = st.text_area(
-                            "Was möchtest du verbessern?",
-                            value=eintrag.get("verbessern", ""),
-                            key=f"edit_tagebuch_verbessern_{eintrag_id}"
-                        )
-
-                        erkenntnis_neu = st.text_area(
-                            "Was nimmst du aus dem Training mit?",
-                            value=eintrag.get("erkenntnis", ""),
-                            key=f"edit_tagebuch_erkenntnis_{eintrag_id}"
-                        )
-
-                        col1, col2 = st.columns(2)
-
-                        with col1:
-
-                            if st.button(
-                                "💾 Änderungen speichern",
-                                key=f"save_tagebuch_{eintrag_id}"
-                            ):
-
-                                if (
-                                    themen_neu
-                                    or gut_neu.strip()
-                                    or verbessern_neu.strip()
-                                    or erkenntnis_neu.strip()
-                                ):
-
-                                    eintrag["datum"] = datum_neu.isoformat()
-                                    eintrag["themen"] = themen_neu
-                                    eintrag["gut"] = gut_neu
-                                    eintrag["verbessern"] = verbessern_neu
-                                    eintrag["erkenntnis"] = erkenntnis_neu
-
-                                    daten_speichern()
-
-                                    st.session_state.pop(
-                                        f"freigabe_tagebuch_{eintrag_id}",
-                                        None
-                                    )
-
-                                    st.session_state.pop(
-                                        "aktiver_tagebuch_eintrag",
-                                        None
-                                    )
-
-                                    st.success(
-                                        "Trainingseintrag erfolgreich geändert!"
-                                    )
-                                    st.rerun()
-
-                                else:
-                                    st.warning(
-                                        "Bitte fülle mindestens ein Feld aus."
-                                    )
-
-                        with col2:
-
-                            if st.button(
-                                "Abbrechen",
-                                key=f"cancel_tagebuch_{eintrag_id}"
-                            ):
-
-                                st.session_state.pop(
-                                    f"freigabe_tagebuch_{eintrag_id}",
-                                    None
-                                )
-
-                                st.session_state.pop(
-                                    "aktiver_tagebuch_eintrag",
-                                    None
-                                )
-
-                                st.rerun()
-
-    else:
-        st.info(
-            "Du hast noch keine Tagebucheinträge. "
-            "Schreibe deinen ersten Trainingseintrag!"
-        )
-
-    st.divider()
 
 
     # ---------------------------------
@@ -1515,6 +1383,7 @@ elif bereich == "📅 Kalender & Planung":
 
     else:
         st.info("Noch keine Termine eingetragen.")
+
 
 # =================================
 # 8. SIDEBAR
