@@ -320,30 +320,10 @@ if bereich == "🏆 Turniere & Statistiken":
                 "Vor- und Nachname des 2. Gegners"
             )
 
-matchdatum = st.date_input(
-    "Datum des Matches",
-    key="match_datum_eingabe"
-)
-
-        ergebnis = st.text_input(
-            "Ergebnis (z. B. 6:4, 6:3)"
+        matchdatum = st.date_input(
+            "Datum des Matches",
+            key="match_datum_eingabe"
         )
-
-        match_turnier = st.selectbox(
-            "Turnier",
-            turnier_auswahl
-        )
-
-        ausgang = st.selectbox(
-            "Wie ist das Match ausgegangen?",
-            ["Gewonnen", "Verloren"]
-        )
-
-        match_absenden = st.form_submit_button(
-            "Match speichern"
-        )
-
-        matchdatum = st.date_input("Datum des Matches")
 
         ergebnis = st.text_input(
             "Ergebnis (z. B. 6:4, 6:3)"
@@ -364,7 +344,6 @@ matchdatum = st.date_input(
         )
 
         if match_absenden:
-
             if match_art == "Einzel":
                 eingaben_vollstaendig = (
                     gegner.strip() and ergebnis.strip()
