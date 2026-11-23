@@ -14,6 +14,85 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+
+/* Gesamter Hintergrund */
+.stApp {
+    background-color: #0b0f0c;
+    color: #ffffff;
+}
+
+/* Kopfbereich */
+[data-testid="stHeader"] {
+    background-color: #0b0f0c;
+}
+
+/* Seitenleiste ausblenden */
+[data-testid="stSidebar"] {
+    display: none;
+}
+
+/* Überschriften */
+h1, h2, h3 {
+    color: #ffffff !important;
+}
+
+/* Normale Texte */
+p, label {
+    color: #e0e8e2;
+}
+
+/* Eingabefelder */
+.stTextInput input,
+.stTextArea textarea,
+.stDateInput input {
+    background-color: #17231a;
+    color: white;
+    border: 1px solid #35583d;
+    border-radius: 8px;
+}
+
+/* Buttons */
+.stButton button,
+.stFormSubmitButton button {
+    background-color: #245234;
+    color: white;
+    border: 1px solid #397449;
+    border-radius: 9px;
+    font-weight: bold;
+}
+
+.stButton button:hover,
+.stFormSubmitButton button:hover {
+    background-color: #347346;
+    color: white;
+    border-color: #55a36a;
+}
+
+/* Navigation */
+div[role="radiogroup"] {
+    background-color: #111914;
+    padding: 10px;
+    border-radius: 12px;
+    gap: 10px;
+}
+
+/* Karten und Container */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #142019;
+    border-color: #294b32;
+    border-radius: 12px;
+}
+
+/* Trennlinien */
+hr {
+    border-color: #294b32;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 def supabase_verbindung(access_token=None):
     url = st.secrets["supabase_url"]
@@ -209,15 +288,19 @@ if "daten" not in st.session_state:
 daten = st.session_state.daten
 
 
-bereich = st.sidebar.radio(
+
+bereich = st.radio(
     "Navigation",
     [
+        "🏠 Startseite",
         "🏆 Turniere & Statistiken",
         "📈 Verbesserung & Training",
         "📅 Kalender & Planung"
-    ]
+    ],
+    horizontal=True,
+    label_visibility="collapsed",
+    key="bereich_nav"
 )
-
 
 # =================================
 # 5. TURNIERE UND STATISTIKEN
