@@ -33,6 +33,7 @@ def supabase_verbindung(access_token=None):
 # 2. DATEN LADEN UND SPEICHERN
 # =================================
 
+
 def daten_laden():
 
     standard = {
@@ -53,7 +54,7 @@ def daten_laden():
             st.session_state.get("supabase_token")
         )
 
-                antwort = (
+        antwort = (
             client.table("tennis_data")
             .select("*")
             .eq("user_id", str(user.id))
@@ -74,36 +75,6 @@ def daten_laden():
     except Exception as e:
         st.error(f"Fehler beim Laden: {e}")
         return standard
-
-
-def daten_speichern():
-
-    user = st.session_state.get("supabase_user")
-
-    if user is None:
-        st.error("Bitte zuerst anmelden.")
-        return
-
-    try:
-        client = supabase_verbindung(
-            st.session_state.get("supabase_token")
-        )
-
-                client.table("tennis_data").upsert({
-            "id": str(user.id),
-            "user_id": str(user.id),
-            "data": st.session_state.daten
-        }).execute()
-
-        st.success("Daten erfolgreich in Supabase gespeichert!")
-    except Exception as e:
-        st.error(f"Fehler beim Speichern: {e}")
-
-
-if "daten" not in st.session_state:
-    st.session_state.daten = daten_laden()
-
-daten = st.session_state.daten
 
 
 # =================================
