@@ -96,7 +96,9 @@ def daten_speichern():
         }).execute()
 
     except Exception as e:
-        st.error(f"Fehler beim Speichern: {
+        st.error(f"Fehler beim Speichern: {e}")
+
+
 # =================================
 # 3. PASSWORTSCHUTZ
 # =================================
