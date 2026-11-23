@@ -2,8 +2,6 @@
 import streamlit as st
 from supabase import create_client
 import pandas as pd
-import json
-import os
 import uuid
 from datetime import date
 
@@ -17,7 +15,6 @@ st.set_page_config(
     layout="wide"
 )
 
-DATEI = "tennis_daten.json"
 def supabase_verbindung(access_token=None):
     url = st.secrets["supabase_url"]
     key = st.secrets["supabase_key"]
@@ -29,10 +26,10 @@ def supabase_verbindung(access_token=None):
 
     return client
 
+
 # =================================
 # 2. DATEN LADEN UND SPEICHERN
 # =================================
-
 
 def daten_laden():
 
@@ -75,6 +72,7 @@ def daten_laden():
     except Exception as e:
         st.error(f"Fehler beim Laden: {e}")
         return standard
+
 
 def daten_speichern():
 
@@ -131,7 +129,6 @@ def bearbeitungsschutz(key):
                 return False
 
             if passwort == richtiges_passwort:
-
                 st.session_state[freigabe] = True
                 st.rerun()
 
@@ -140,19 +137,24 @@ def bearbeitungsschutz(key):
 
     return False
 
+
 # =================================
 # 4. TITEL UND NAVIGATION
 # =================================
+
 col_titel, col_login = st.columns([4, 1])
 
 with col_login:
+
     if "supabase_user" not in st.session_state:
         st.session_state.supabase_user = None
 
     if st.session_state.supabase_user is None:
 
         with st.popover("🔐 Login"):
+
             email = st.text_input("E-Mail", key="login_email")
+
             passwort = st.text_input(
                 "Passwort",
                 type="password",
@@ -160,8 +162,10 @@ with col_login:
             )
 
             if st.button("Anmelden"):
+
                 try:
                     client = supabase_verbindung()
+
                     antwort = client.auth.sign_in_with_password({
                         "email": email,
                         "password": passwort
@@ -169,7 +173,9 @@ with col_login:
 
                     st.session_state.supabase_user = antwort.user
                     st.session_state.supabase_token = antwort.session.access_token
+
                     st.session_state.pop("daten", None)
+
                     st.success("Erfolgreich angemeldet!")
                     st.rerun()
 
@@ -177,11 +183,15 @@ with col_login:
                     st.error("Anmeldung fehlgeschlagen. Bitte Daten prüfen.")
 
     else:
+
         st.write("Angemeldet")
+
         if st.button("Abmelden"):
             st.session_state.supabase_user = None
             st.session_state.supabase_token = None
+            st.session_state.pop("daten", None)
             st.rerun()
+
 
 col_logo, col_titel = st.columns([1, 4])
 
@@ -191,10 +201,13 @@ with col_logo:
 with col_titel:
     st.title("H.F. Tennis Analysis")
     st.write("Dein persönliches Tennis-Portal.")
+
+
 if "daten" not in st.session_state:
     st.session_state.daten = daten_laden()
 
 daten = st.session_state.daten
+
 
 bereich = st.sidebar.radio(
     "Navigation",
@@ -218,12 +231,12 @@ if bereich == "🏆 Turniere & Statistiken":
 
     siege = sum(
         1 for m in matches
-        if m["ausgang"] == "Gewonnen"
+        if m.get("ausgang") == "Gewonnen"
     )
 
     niederlagen = sum(
         1 for m in matches
-        if m["ausgang"] == "Verloren"
+        if m.get("ausgang") == "Verloren"
     )
 
     gesamt = len(matches)
@@ -238,6 +251,7 @@ if bereich == "🏆 Turniere & Statistiken":
 
     st.divider()
 
+
     # ---------------------------------
     # TURNIER HINZUFÜGEN
     # ---------------------------------
@@ -247,9 +261,7 @@ if bereich == "🏆 Turniere & Statistiken":
     with st.form("turnier_formular"):
 
         turniername = st.text_input("Name des Turniers")
-
         turnierdatum = st.date_input("Datum des Turniers")
-
         turnierort = st.text_input("Ort")
 
         turnier_absenden = st.form_submit_button(
@@ -286,6 +298,7 @@ if bereich == "🏆 Turniere & Statistiken":
 
     st.divider()
 
+
     # ---------------------------------
     # MATCH HINZUFÜGEN
     # ---------------------------------
@@ -306,17 +319,21 @@ if bereich == "🏆 Turniere & Statistiken":
     with st.form("match_formular"):
 
         if match_art == "Einzel":
+
             gegner = st.text_input("Name des Gegners")
             partner = ""
             gegner2 = ""
 
         else:
+
             partner = st.text_input(
                 "Vor- und Nachname des Partners"
             )
+
             gegner = st.text_input(
                 "Vor- und Nachname des 1. Gegners"
             )
+
             gegner2 = st.text_input(
                 "Vor- und Nachname des 2. Gegners"
             )
@@ -345,11 +362,15 @@ if bereich == "🏆 Turniere & Statistiken":
         )
 
         if match_absenden:
+
             if match_art == "Einzel":
+
                 eingaben_vollstaendig = (
                     gegner.strip() and ergebnis.strip()
                 )
+
             else:
+
                 eingaben_vollstaendig = (
                     partner.strip()
                     and gegner.strip()
@@ -397,6 +418,7 @@ if bereich == "🏆 Turniere & Statistiken":
 
     st.divider()
 
+
     # ---------------------------------
     # FORTSCHRITTSDIAGRAMM
     # ---------------------------------
@@ -412,7 +434,6 @@ if bereich == "🏆 Turniere & Statistiken":
             monat = m["datum"][:7]
 
             if monat not in monatsdaten:
-
                 monatsdaten[monat] = {
                     "Siege": 0,
                     "Niederlagen": 0
@@ -420,7 +441,6 @@ if bereich == "🏆 Turniere & Statistiken":
 
             if m["ausgang"] == "Gewonnen":
                 monatsdaten[monat]["Siege"] += 1
-
             else:
                 monatsdaten[monat]["Niederlagen"] += 1
 
@@ -450,329 +470,374 @@ if bereich == "🏆 Turniere & Statistiken":
 
     st.divider()
 
- 
 
-# ---------------------------------
-# MATCHÜBERSICHT
-# ---------------------------------
+    # ---------------------------------
+    # MATCHÜBERSICHT
+    # ---------------------------------
 
-st.subheader("🎾 Matchübersicht")
+    st.subheader("🎾 Matchübersicht")
 
-if daten["matches"]:
+    if daten["matches"]:
 
-    for match in reversed(daten["matches"]):
+        for match in reversed(daten["matches"]):
 
-        match_id = match["_id"]
+            match_id = match["_id"]
 
-        art = match.get("art", "Einzel")
-        partner = match.get("partner", "")
-        gegner = match.get("gegner", "")
-        gegner2 = match.get("gegner2", "")
-        ausgang = match.get("ausgang", "Gewonnen")
+            art = match.get("art", "Einzel")
+            partner = match.get("partner", "")
+            gegner = match.get("gegner", "")
+            gegner2 = match.get("gegner2", "")
+            ausgang = match.get("ausgang", "Gewonnen")
 
-        gewonnen = ausgang == "Gewonnen"
-
-        if gewonnen:
-            symbol = "🏆"
-            farbe = "green"
-        else:
-            symbol = "🥈"
-            farbe = "red"
-
-        if art == "Doppel":
-            titel = f"Doppel – {partner} / {gegner} und {gegner2}"
-        else:
-            titel = f"Einzel – {gegner}"
-
-        # MATCHKARTE
-
-        with st.container(border=True):
-
-            st.markdown(f"### {titel}")
-
-            st.caption(match.get("datum", ""))
-
-            st.markdown(
-                f"**Ausgang:** :{farbe}[{symbol} {ausgang}]"
-            )
+            if ausgang == "Gewonnen":
+                symbol = "🏆"
+                farbe = "green"
+            else:
+                symbol = "🥈"
+                farbe = "red"
 
             if art == "Doppel":
-
-                st.markdown(f"**Partner:** {partner}")
-                st.markdown(f"**Gegner:** {gegner} und {gegner2}")
-
+                titel = f"Doppel – {partner} / {gegner} und {gegner2}"
             else:
+                titel = f"Einzel – {gegner}"
 
-                st.markdown(f"**Gegner:** {gegner}")
+            with st.container(border=True):
 
-            st.markdown(
-                f"## :{farbe}[{match.get('ergebnis', '')}]"
-            )
+                st.markdown(f"### {titel}")
+                st.caption(match.get("datum", ""))
 
-            st.markdown(
-                f"**Turnier:** {match.get('turnier', '-')}"
-            )
+                st.markdown(
+                    f"**Ausgang:** :{farbe}[{symbol} {ausgang}]"
+                )
 
-            # BEARBEITEN
+                if art == "Doppel":
+                    st.markdown(f"**Partner:** {partner}")
+                    st.markdown(f"**Gegner:** {gegner} und {gegner2}")
+                else:
+                    st.markdown(f"**Gegner:** {gegner}")
 
-            if st.button(
-                "✏️ Bearbeiten",
-                key=f"bearbeiten_match_{match_id}"
-            ):
+                st.markdown(
+                    f"## :{farbe}[{match.get('ergebnis', '')}]"
+                )
 
-                st.session_state["aktives_match_bearbeiten"] = match_id
-                st.rerun()
+                st.markdown(
+                    f"**Turnier:** {match.get('turnier', '-')}"
+                )
 
-            # BEARBEITUNGSBEREICH
+                if st.button(
+                    "✏️ Bearbeiten",
+                    key=f"bearbeiten_match_{match_id}"
+                ):
+                    st.session_state["aktives_match_bearbeiten"] = match_id
+                    st.rerun()
 
-            if st.session_state.get(
-                "aktives_match_bearbeiten"
-            ) == match_id:
+                if st.session_state.get(
+                    "aktives_match_bearbeiten"
+                ) == match_id:
 
-                if bearbeitungsschutz(f"match_{match_id}"):
+                    if bearbeitungsschutz(f"match_{match_id}"):
 
-                    st.divider()
-                    st.markdown("### ✏️ Match bearbeiten")
+                        st.divider()
+                        st.markdown("### ✏️ Match bearbeiten")
 
-                    art_neu = st.selectbox(
-                        "Matchart",
-                        ["Einzel", "Doppel"],
-                        index=0 if art == "Einzel" else 1,
-                        key=f"edit_art_{match_id}"
-                    )
-
-                    if art_neu == "Doppel":
-
-                        partner_neu = st.text_input(
-                            "Partner",
-                            value=partner,
-                            key=f"edit_partner_{match_id}"
+                        art_neu = st.selectbox(
+                            "Matchart",
+                            ["Einzel", "Doppel"],
+                            index=0 if art == "Einzel" else 1,
+                            key=f"edit_art_{match_id}"
                         )
 
-                        gegner_neu = st.text_input(
-                            "1. Gegner",
-                            value=gegner,
-                            key=f"edit_gegner_{match_id}"
+                        if art_neu == "Doppel":
+
+                            partner_neu = st.text_input(
+                                "Partner",
+                                value=partner,
+                                key=f"edit_partner_{match_id}"
+                            )
+
+                            gegner_neu = st.text_input(
+                                "1. Gegner",
+                                value=gegner,
+                                key=f"edit_gegner_{match_id}"
+                            )
+
+                            gegner2_neu = st.text_input(
+                                "2. Gegner",
+                                value=gegner2,
+                                key=f"edit_gegner2_{match_id}"
+                            )
+
+                        else:
+
+                            partner_neu = ""
+                            gegner2_neu = ""
+
+                            gegner_neu = st.text_input(
+                                "Name des Gegners",
+                                value=gegner,
+                                key=f"edit_gegner_{match_id}"
+                            )
+
+                        datum_neu = st.date_input(
+                            "Datum",
+                            value=date.fromisoformat(match["datum"]),
+                            key=f"edit_datum_{match_id}"
                         )
 
-                        gegner2_neu = st.text_input(
-                            "2. Gegner",
-                            value=gegner2,
-                            key=f"edit_gegner2_{match_id}"
+                        ergebnis_neu = st.text_input(
+                            "Ergebnis",
+                            value=match.get("ergebnis", ""),
+                            key=f"edit_ergebnis_{match_id}"
                         )
 
-                    else:
+                        turnier_optionen = [
+                            t.get("name", "")
+                            for t in daten.get("turniere", [])
+                            if t.get("name")
+                        ]
 
-                        partner_neu = ""
-                        gegner2_neu = ""
+                        aktuelles_turnier = match.get("turnier", "-")
 
-                        gegner_neu = st.text_input(
-                            "Name des Gegners",
-                            value=gegner,
-                            key=f"edit_gegner_{match_id}"
+                        if aktuelles_turnier not in turnier_optionen:
+                            turnier_optionen.append(aktuelles_turnier)
+
+                        if not turnier_optionen:
+                            turnier_optionen = ["-"]
+
+                        turnier_neu = st.selectbox(
+                            "Turnier",
+                            turnier_optionen,
+                            index=turnier_optionen.index(aktuelles_turnier),
+                            key=f"edit_turnier_{match_id}"
                         )
 
-                    datum_neu = st.date_input(
-                        "Datum",
-                        value=date.fromisoformat(match["datum"]),
-                        key=f"edit_datum_{match_id}"
-                    )
+                        ausgang_neu = st.selectbox(
+                            "Matchausgang",
+                            ["Gewonnen", "Verloren"],
+                            index=0 if ausgang == "Gewonnen" else 1,
+                            key=f"edit_ausgang_{match_id}"
+                        )
 
-                    ergebnis_neu = st.text_input(
-                        "Ergebnis",
-                        value=match.get("ergebnis", ""),
-                        key=f"edit_ergebnis_{match_id}"
-                    )
+                        col1, col2 = st.columns(2)
 
-                    turnier_optionen = [
-                        t.get("name", "")
-                        for t in daten.get("turniere", [])
-                        if t.get("name")
-                    ]
+                        with col1:
 
-                    aktuelles_turnier = match.get("turnier", "-")
+                            if st.button(
+                                "💾 Änderungen speichern",
+                                key=f"save_match_{match_id}"
+                            ):
 
-                    if aktuelles_turnier not in turnier_optionen:
-                        turnier_optionen.append(aktuelles_turnier)
+                                if gegner_neu.strip() and ergebnis_neu.strip():
 
-                    if not turnier_optionen:
-                        turnier_optionen = ["-"]
+                                    if art_neu == "Doppel" and not (
+                                        partner_neu.strip()
+                                        and gegner2_neu.strip()
+                                    ):
+                                        st.warning(
+                                            "Bitte Partner und beide Gegner eintragen."
+                                        )
 
-                    turnier_neu = st.selectbox(
-                        "Turnier",
-                        turnier_optionen,
-                        index=turnier_optionen.index(aktuelles_turnier),
-                        key=f"edit_turnier_{match_id}"
-                    )
+                                    else:
 
-                    ausgang_neu = st.selectbox(
-                        "Matchausgang",
-                        ["Gewonnen", "Verloren"],
-                        index=0 if ausgang == "Gewonnen" else 1,
-                        key=f"edit_ausgang_{match_id}"
-                    )
+                                        altes_datum = match["datum"]
 
-                    col1, col2 = st.columns(2)
+                                        if art == "Doppel":
+                                            alter_titel = (
+                                                f"Match gegen {gegner} und {gegner2}"
+                                            )
+                                        else:
+                                            alter_titel = f"Match gegen {gegner}"
 
-                    with col1:
+                                        if art_neu == "Doppel":
+                                            neuer_titel = (
+                                                f"Match gegen {gegner_neu} "
+                                                f"und {gegner2_neu}"
+                                            )
+                                        else:
+                                            neuer_titel = f"Match gegen {gegner_neu}"
 
-                        if st.button(
-                            "💾 Änderungen speichern",
-                            key=f"save_match_{match_id}"
-                        ):
+                                        match["art"] = art_neu
+                                        match["partner"] = partner_neu
+                                        match["gegner"] = gegner_neu
+                                        match["gegner2"] = gegner2_neu
+                                        match["datum"] = datum_neu.isoformat()
+                                        match["ergebnis"] = ergebnis_neu
+                                        match["turnier"] = turnier_neu
+                                        match["ausgang"] = ausgang_neu
 
-                            if gegner_neu.strip() and ergebnis_neu.strip():
+                                        for termin in daten["termine"]:
 
-                                if art_neu == "Doppel" and not (
-                                    partner_neu.strip()
-                                    and gegner2_neu.strip()
-                                ):
-                                    st.warning(
-                                        "Bitte Partner und beide Gegner eintragen."
-                                    )
+                                            if (
+                                                termin.get("typ") == "Match"
+                                                and termin.get("titel") == alter_titel
+                                                and termin.get("datum") == altes_datum
+                                            ):
+                                                termin["titel"] = neuer_titel
+                                                termin["datum"] = datum_neu.isoformat()
+                                                break
+
+                                        daten_speichern()
+
+                                        st.session_state.pop(
+                                            f"freigabe_match_{match_id}",
+                                            None
+                                        )
+
+                                        st.session_state.pop(
+                                            "aktives_match_bearbeiten",
+                                            None
+                                        )
+
+                                        st.success("Match erfolgreich geändert!")
+                                        st.rerun()
 
                                 else:
+                                    st.warning(
+                                        "Bitte Gegner und Ergebnis eintragen."
+                                    )
 
-                                    altes_datum = match["datum"]
+                        with col2:
 
-                                    if art == "Doppel":
-                                        alter_titel = (
-                                            f"Match gegen {gegner} und {gegner2}"
-                                        )
-                                    else:
-                                        alter_titel = f"Match gegen {gegner}"
+                            if st.button(
+                                "Abbrechen",
+                                key=f"cancel_match_{match_id}"
+                            ):
 
-                                    if art_neu == "Doppel":
-                                        neuer_titel = (
-                                            f"Match gegen {gegner_neu} "
-                                            f"und {gegner2_neu}"
-                                        )
-                                    else:
-                                        neuer_titel = (
-                                            f"Match gegen {gegner_neu}"
-                                        )
+                                st.session_state.pop(
+                                    f"freigabe_match_{match_id}",
+                                    None
+                                )
 
-                                    # MATCH AKTUALISIEREN
+                                st.session_state.pop(
+                                    "aktives_match_bearbeiten",
+                                    None
+                                )
 
-                                    match["art"] = art_neu
-                                    match["partner"] = partner_neu
-                                    match["gegner"] = gegner_neu
-                                    match["gegner2"] = gegner2_neu
-                                    match["datum"] = datum_neu.isoformat()
-                                    match["ergebnis"] = ergebnis_neu
-                                    match["turnier"] = turnier_neu
-                                    match["ausgang"] = ausgang_neu
+                                st.rerun()
 
-                                    # KALENDEREINTRAG AKTUALISIEREN
+    else:
+        st.info("Noch keine Matches eingetragen.")
+
+    st.divider()
+
+
+    # ---------------------------------
+    # TURNIERÜBERSICHT
+    # ---------------------------------
+
+    st.subheader("🏆 Meine Turniere")
+
+    if daten["turniere"]:
+
+        for turnier in reversed(daten["turniere"]):
+
+            turnier_id = turnier["_id"]
+
+            with st.container(border=True):
+
+                st.markdown(f"### {turnier['name']}")
+                st.write("**Datum:**", turnier["datum"])
+                st.write("**Ort:**", turnier.get("ort", ""))
+
+                if st.button(
+                    "✏️ Turnier bearbeiten",
+                    key=f"bearbeiten_turnier_{turnier_id}"
+                ):
+                    st.session_state["aktives_turnier_bearbeiten"] = turnier_id
+                    st.rerun()
+
+                if st.session_state.get(
+                    "aktives_turnier_bearbeiten"
+                ) == turnier_id:
+
+                    if bearbeitungsschutz(f"turnier_{turnier_id}"):
+
+                        st.divider()
+                        st.markdown("### ✏️ Turnier bearbeiten")
+
+                        name_neu = st.text_input(
+                            "Turniername",
+                            value=turnier["name"],
+                            key=f"edit_turnier_name_{turnier_id}"
+                        )
+
+                        datum_neu = st.date_input(
+                            "Turnierdatum",
+                            value=date.fromisoformat(turnier["datum"]),
+                            key=f"edit_turnier_datum_{turnier_id}"
+                        )
+
+                        ort_neu = st.text_input(
+                            "Turnierort",
+                            value=turnier.get("ort", ""),
+                            key=f"edit_turnier_ort_{turnier_id}"
+                        )
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+
+                            if st.button(
+                                "💾 Änderungen speichern",
+                                key=f"save_turnier_{turnier_id}"
+                            ):
+
+                                if name_neu.strip():
+
+                                    alter_name = turnier["name"]
+                                    altes_datum = turnier["datum"]
+
+                                    turnier["name"] = name_neu
+                                    turnier["datum"] = datum_neu.isoformat()
+                                    turnier["ort"] = ort_neu
 
                                     for termin in daten["termine"]:
 
                                         if (
-                                            termin.get("typ") == "Match"
-                                            and termin.get("titel") == alter_titel
+                                            termin.get("typ") == "Turnier"
+                                            and termin.get("titel") == alter_name
                                             and termin.get("datum") == altes_datum
                                         ):
-
-                                            termin["titel"] = neuer_titel
+                                            termin["titel"] = name_neu
                                             termin["datum"] = datum_neu.isoformat()
                                             break
 
                                     daten_speichern()
 
                                     st.session_state.pop(
-                                        f"freigabe_match_{match_id}",
+                                        f"freigabe_turnier_{turnier_id}",
                                         None
                                     )
 
                                     st.session_state.pop(
-                                        "aktives_match_bearbeiten",
+                                        "aktives_turnier_bearbeiten",
                                         None
                                     )
 
-                                    st.success("Match erfolgreich geändert!")
+                                    st.success("Turnier erfolgreich geändert!")
                                     st.rerun()
 
-                            else:
-                                st.warning(
-                                    "Bitte Gegner und Ergebnis eintragen."
+                                else:
+                                    st.warning("Bitte einen Turniernamen eingeben.")
+
+                        with col2:
+
+                            if st.button(
+                                "Abbrechen",
+                                key=f"cancel_turnier_{turnier_id}"
+                            ):
+
+                                st.session_state.pop(
+                                    f"freigabe_turnier_{turnier_id}",
+                                    None
                                 )
 
-                    with col2:
+                                st.session_state.pop(
+                                    "aktives_turnier_bearbeiten",
+                                    None
+                                )
 
-                        if st.button(
-                            "Abbrechen",
-                            key=f"cancel_match_{match_id}"
-                        ):
-
-                            st.session_state.pop(
-                                f"freigabe_match_{match_id}",
-                                None
-                            )
-
-                            st.session_state.pop(
-                                "aktives_match_bearbeiten",
-                                None
-                            )
-
-                            st.rerun()
-
-else:
-
-    st.info("Noch keine Matches eingetragen.")
-
-st.divider()
-
-
-# ---------------------------------
-# TURNIERÜBERSICHT
-# ---------------------------------
-
-st.subheader("🏆 Meine Turniere")
-
-if daten["turniere"]:
-
-    for turnier in reversed(daten["turniere"]):
-
-            turnier_id = turnier["_id"]
-
-            with st.expander(
-                f"{turnier['name']} – {turnier['datum']}"
-            ):
-
-                st.write("Ort:", turnier["ort"])
-
-                if bearbeitungsschutz(f"turnier_{turnier_id}"):
-
-                    if st.button(
-                        "🗑️ Turnier löschen",
-                        key=f"delete_turnier_{turnier_id}"
-                    ):
-
-                        turniername = turnier["name"]
-                        turnierdatum = turnier["datum"]
-
-                        daten["turniere"] = [
-                            t for t in daten["turniere"]
-                            if t["_id"] != turnier_id
-                        ]
-
-                        daten["termine"] = [
-                            t for t in daten["termine"]
-                            if not (
-                                t["typ"] == "Turnier"
-                                and t["titel"] == turniername
-                                and t["datum"] == turnierdatum
-                            )
-                        ]
-
-                        st.session_state.pop(
-                            f"freigabe_turnier_{turnier_id}",
-                            None
-                        )
-
-                        daten_speichern()
-                        st.success("Turnier gelöscht!")
-                        st.rerun()
+                                st.rerun()
 
     else:
         st.info("Noch keine Turniere eingetragen.")
@@ -808,6 +873,7 @@ elif bereich == "📈 Verbesserung & Training":
 
     st.divider()
 
+
     # ---------------------------------
     # TENNIS-TAGEBUCH
     # ---------------------------------
@@ -841,17 +907,9 @@ elif bereich == "📈 Verbesserung & Training":
             ]
         )
 
-        tagebuch_gut = st.text_area(
-            "Was lief heute gut?"
-        )
-
-        tagebuch_verbessern = st.text_area(
-            "Was möchtest du verbessern?"
-        )
-
-        tagebuch_erkenntnis = st.text_area(
-            "Was nimmst du aus dem Training mit?"
-        )
+        tagebuch_gut = st.text_area("Was lief heute gut?")
+        tagebuch_verbessern = st.text_area("Was möchtest du verbessern?")
+        tagebuch_erkenntnis = st.text_area("Was nimmst du aus dem Training mit?")
 
         tagebuch_speichern = st.form_submit_button(
             "📓 Trainingseintrag speichern"
@@ -879,18 +937,14 @@ elif bereich == "📈 Verbesserung & Training":
 
                 daten_speichern()
 
-                st.success(
-                    "Dein Trainingseintrag wurde gespeichert!"
-                )
-
+                st.success("Dein Trainingseintrag wurde gespeichert!")
                 st.rerun()
 
             else:
-                st.warning(
-                    "Bitte fülle mindestens ein Feld aus."
-                )
+                st.warning("Bitte fülle mindestens ein Feld aus.")
 
     st.divider()
+
 
     # ---------------------------------
     # ALTE TAGEBUCHEINTRÄGE
@@ -908,9 +962,7 @@ elif bereich == "📈 Verbesserung & Training":
 
         for eintrag in eintraege:
 
-            with st.expander(
-                f"🎾 {eintrag['datum']}"
-            ):
+            with st.expander(f"🎾 {eintrag['datum']}"):
 
                 st.write("**Trainierte Bereiche:**")
 
@@ -935,6 +987,7 @@ elif bereich == "📈 Verbesserung & Training":
         )
 
     st.divider()
+
 
     # ---------------------------------
     # VIDEOANALYSE
@@ -979,7 +1032,6 @@ elif bereich == "📅 Kalender & Planung":
     with st.form("termin_formular"):
 
         terminname = st.text_input("Name des Termins")
-
         termindatum = st.date_input("Datum des Termins")
 
         terminart = st.selectbox(
@@ -987,9 +1039,7 @@ elif bereich == "📅 Kalender & Planung":
             ["Training", "Sonstiges"]
         )
 
-        termin_absenden = st.form_submit_button(
-            "Termin speichern"
-        )
+        termin_absenden = st.form_submit_button("Termin speichern")
 
         if termin_absenden:
 
@@ -1011,6 +1061,7 @@ elif bereich == "📅 Kalender & Planung":
                 st.warning("Bitte gib einen Namen ein.")
 
     st.divider()
+
 
     # ---------------------------------
     # KALENDERÜBERSICHT
@@ -1060,7 +1111,6 @@ elif bereich == "📅 Kalender & Planung":
 
                 st.write("Art:", termin["typ"])
 
-                # Kalendertermine ohne Passwort löschen
                 if st.button(
                     "🗑️ Termin löschen",
                     key=f"delete_termin_{termin_id}"
@@ -1072,6 +1122,7 @@ elif bereich == "📅 Kalender & Planung":
                     ]
 
                     daten_speichern()
+
                     st.success("Termin gelöscht!")
                     st.rerun()
 
