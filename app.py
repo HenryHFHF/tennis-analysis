@@ -1022,7 +1022,7 @@ elif bereich == "📈 Verbesserung & Training":
                             key=f"edit_tagebuch_themen_{eintrag_id}"
                         )
 
-                        gut_neu = st.text_area(
+                                                gut_neu = st.text_area(
                             "Was lief heute gut?",
                             value=eintrag.get("gut", ""),
                             key=f"edit_tagebuch_gut_{eintrag_id}"
@@ -1043,12 +1043,10 @@ elif bereich == "📈 Verbesserung & Training":
                         col1, col2 = st.columns(2)
 
                         with col1:
-
                             if st.button(
                                 "💾 Änderungen speichern",
                                 key=f"save_tagebuch_{eintrag_id}"
                             ):
-
                                 eintrag["datum"] = datum_neu.isoformat()
                                 eintrag["themen"] = themen_neu
                                 eintrag["gut"] = gut_neu
