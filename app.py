@@ -15,6 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
+
 def supabase_verbindung(access_token=None):
     url = st.secrets["supabase_url"]
     key = st.secrets["supabase_key"]
@@ -839,9 +840,6 @@ if bereich == "🏆 Turniere & Statistiken":
 
                                 st.rerun()
 
-    else:
-        st.info("Noch keine Turniere eingetragen.")
-
 
 # =================================
 # 6. VERBESSERUNG UND TRAINING
@@ -912,7 +910,7 @@ elif bereich == "📈 Verbesserung & Training":
         tagebuch_erkenntnis = st.text_area("Was nimmst du aus dem Training mit?")
 
         tagebuch_speichern = st.form_submit_button(
-            "📓 Trainingseintrag speichern"
+            "📒 Trainingseintrag speichern"
         )
 
         if tagebuch_speichern:
@@ -962,6 +960,8 @@ elif bereich == "📈 Verbesserung & Training":
 
         for eintrag in eintraege:
 
+            eintrag_id = eintrag["_id"]
+
             with st.expander(f"🎾 {eintrag['datum']}"):
 
                 st.write("**Trainierte Bereiche:**")
@@ -979,6 +979,130 @@ elif bereich == "📈 Verbesserung & Training":
 
                 st.write("**Meine Erkenntnis:**")
                 st.write(eintrag["erkenntnis"] or "Keine Angabe")
+
+                # ---------------------------------
+                # TAGEBUCHEINTRAG BEARBEITEN
+                # ---------------------------------
+
+                if st.button(
+                    "✏️ Eintrag bearbeiten",
+                    key=f"bearbeiten_tagebuch_{eintrag_id}"
+                ):
+                    st.session_state["aktiver_tagebuch_eintrag"] = eintrag_id
+                    st.rerun()
+
+                if st.session_state.get(
+                    "aktiver_tagebuch_eintrag"
+                ) == eintrag_id:
+
+                    if bearbeitungsschutz(f"tagebuch_{eintrag_id}"):
+
+                        st.divider()
+                        st.markdown("### ✏️ Trainingseintrag bearbeiten")
+
+                        datum_neu = st.date_input(
+                            "Trainingsdatum",
+                            value=date.fromisoformat(eintrag["datum"]),
+                            key=f"edit_tagebuch_datum_{eintrag_id}"
+                        )
+
+                        themen_neu = st.multiselect(
+                            "Trainierte Bereiche",
+                            [
+                                "Aufschlag",
+                                "Vorhand",
+                                "Rückhand",
+                                "Volley",
+                                "Beinarbeit",
+                                "Taktik",
+                                "Matchtraining",
+                                "Fitness",
+                                "Mentales Training"
+                            ],
+                            default=eintrag.get("themen", []),
+                            key=f"edit_tagebuch_themen_{eintrag_id}"
+                        )
+
+                        gut_neu = st.text_area(
+                            "Was lief heute gut?",
+                            value=eintrag.get("gut", ""),
+                            key=f"edit_tagebuch_gut_{eintrag_id}"
+                        )
+
+                        verbessern_neu = st.text_area(
+                            "Was möchtest du verbessern?",
+                            value=eintrag.get("verbessern", ""),
+                            key=f"edit_tagebuch_verbessern_{eintrag_id}"
+                        )
+
+                        erkenntnis_neu = st.text_area(
+                            "Was nimmst du aus dem Training mit?",
+                            value=eintrag.get("erkenntnis", ""),
+                            key=f"edit_tagebuch_erkenntnis_{eintrag_id}"
+                        )
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+
+                            if st.button(
+                                "💾 Änderungen speichern",
+                                key=f"save_tagebuch_{eintrag_id}"
+                            ):
+
+                                if (
+                                    themen_neu
+                                    or gut_neu.strip()
+                                    or verbessern_neu.strip()
+                                    or erkenntnis_neu.strip()
+                                ):
+
+                                    eintrag["datum"] = datum_neu.isoformat()
+                                    eintrag["themen"] = themen_neu
+                                    eintrag["gut"] = gut_neu
+                                    eintrag["verbessern"] = verbessern_neu
+                                    eintrag["erkenntnis"] = erkenntnis_neu
+
+                                    daten_speichern()
+
+                                    st.session_state.pop(
+                                        f"freigabe_tagebuch_{eintrag_id}",
+                                        None
+                                    )
+
+                                    st.session_state.pop(
+                                        "aktiver_tagebuch_eintrag",
+                                        None
+                                    )
+
+                                    st.success(
+                                        "Trainingseintrag erfolgreich geändert!"
+                                    )
+                                    st.rerun()
+
+                                else:
+                                    st.warning(
+                                        "Bitte fülle mindestens ein Feld aus."
+                                    )
+
+                        with col2:
+
+                            if st.button(
+                                "Abbrechen",
+                                key=f"cancel_tagebuch_{eintrag_id}"
+                            ):
+
+                                st.session_state.pop(
+                                    f"freigabe_tagebuch_{eintrag_id}",
+                                    None
+                                )
+
+                                st.session_state.pop(
+                                    "aktiver_tagebuch_eintrag",
+                                    None
+                                )
+
+                                st.rerun()
 
     else:
         st.info(
@@ -1109,22 +1233,114 @@ elif bereich == "📅 Kalender & Planung":
                 f"{termin['titel']} – {termin['datum']}"
             ):
 
-                st.write("Art:", termin["typ"])
+                st.write("**Art:**", termin["typ"])
 
-                if st.button(
-                    "🗑️ Termin löschen",
-                    key=f"delete_termin_{termin_id}"
-                ):
+                # Match- und Turniertermine werden
+                # in ihren jeweiligen Bereichen bearbeitet.
 
-                    daten["termine"] = [
-                        t for t in daten["termine"]
-                        if t["_id"] != termin_id
-                    ]
+                if termin.get("typ") in ["Match", "Turnier"]:
 
-                    daten_speichern()
+                    st.info(
+                        "Dieser Termin gehört zu einem Match oder Turnier. "
+                        "Bitte bearbeite ihn im Bereich "
+                        "'Turniere & Statistiken'."
+                    )
 
-                    st.success("Termin gelöscht!")
-                    st.rerun()
+                else:
+
+                    if st.button(
+                        "✏️ Termin bearbeiten",
+                        key=f"bearbeiten_termin_{termin_id}"
+                    ):
+                        st.session_state["aktiver_termin_bearbeiten"] = termin_id
+                        st.rerun()
+
+                    if st.session_state.get(
+                        "aktiver_termin_bearbeiten"
+                    ) == termin_id:
+
+                        if bearbeitungsschutz(f"termin_{termin_id}"):
+
+                            st.divider()
+                            st.markdown("### ✏️ Termin bearbeiten")
+
+                            titel_neu = st.text_input(
+                                "Name des Termins",
+                                value=termin.get("titel", ""),
+                                key=f"edit_termin_titel_{termin_id}"
+                            )
+
+                            datum_neu = st.date_input(
+                                "Datum des Termins",
+                                value=date.fromisoformat(termin["datum"]),
+                                key=f"edit_termin_datum_{termin_id}"
+                            )
+
+                            typ_neu = st.selectbox(
+                                "Art des Termins",
+                                ["Training", "Sonstiges"],
+                                index=(
+                                    0 if termin.get("typ") == "Training"
+                                    else 1
+                                ),
+                                key=f"edit_termin_typ_{termin_id}"
+                            )
+
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+
+                                if st.button(
+                                    "💾 Änderungen speichern",
+                                    key=f"save_termin_{termin_id}"
+                                ):
+
+                                    if titel_neu.strip():
+
+                                        termin["titel"] = titel_neu
+                                        termin["datum"] = datum_neu.isoformat()
+                                        termin["typ"] = typ_neu
+
+                                        daten_speichern()
+
+                                        st.session_state.pop(
+                                            f"freigabe_termin_{termin_id}",
+                                            None
+                                        )
+
+                                        st.session_state.pop(
+                                            "aktiver_termin_bearbeiten",
+                                            None
+                                        )
+
+                                        st.success(
+                                            "Termin erfolgreich geändert!"
+                                        )
+                                        st.rerun()
+
+                                    else:
+                                        st.warning(
+                                            "Bitte gib einen Namen für den Termin ein."
+                                        )
+
+                            with col2:
+
+                                if st.button(
+                                    "Abbrechen",
+                                    key=f"cancel_termin_{termin_id}"
+                                ):
+
+                                    st.session_state.pop(
+                                        f"freigabe_termin_{termin_id}",
+                                        None
+                                    )
+
+                                    st.session_state.pop(
+                                        "aktiver_termin_bearbeiten",
+                                        None
+                                    )
+
+                                    st.rerun()
 
     else:
         st.info("Noch keine Termine eingetragen.")
