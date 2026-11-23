@@ -53,10 +53,10 @@ def daten_laden():
             st.session_state.get("supabase_token")
         )
 
-        antwort = (
+                antwort = (
             client.table("tennis_data")
             .select("*")
-.eq("user_id", str(user.id))
+            .eq("user_id", str(user.id))
             .execute()
         )
 
@@ -89,12 +89,13 @@ def daten_speichern():
             st.session_state.get("supabase_token")
         )
 
-        client.table("tennis_data").upsert({
+                client.table("tennis_data").upsert({
             "id": str(user.id),
             "user_id": str(user.id),
             "data": st.session_state.daten
         }).execute()
 
+        st.success("Daten erfolgreich in Supabase gespeichert!")
     except Exception as e:
         st.error(f"Fehler beim Speichern: {e}")
 
