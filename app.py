@@ -516,7 +516,7 @@ if daten["matches"]:
 
             st.divider()
 
-            if loeschschutz(f"match_{match_id}"):
+            if bearbeitungsschutz(f"match_{match_id}"):
 
                 if st.button(
                     "🗑️ Match löschen",
@@ -562,7 +562,7 @@ if daten["turniere"]:
 
                 st.write("Ort:", turnier["ort"])
 
-                if loeschschutz(f"turnier_{turnier_id}"):
+                if bearbeitungsschutz(f"turnier_{turnier_id}"):
 
                     if st.button(
                         "🗑️ Turnier löschen",
