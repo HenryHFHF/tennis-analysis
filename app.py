@@ -96,19 +96,19 @@ def daten_speichern():
         }).execute()
 
     except Exception as e:
-        st.error(f"Fehler beim Speichern: {e}")
+        st.error(f"Fehler beim Speichern: {
 # =================================
 # 3. PASSWORTSCHUTZ
 # =================================
 
-def loeschschutz(key):
+def bearbeitungsschutz(key):
 
     freigabe = f"freigabe_{key}"
 
     if st.session_state.get(freigabe, False):
         return True
 
-    with st.expander("🔒 Löschen – Passwort erforderlich"):
+    with st.expander("🔒 Bearbeiten – Passwort erforderlich"):
 
         passwort = st.text_input(
             "Passwort eingeben",
@@ -137,7 +137,6 @@ def loeschschutz(key):
                 st.error("Falsches Passwort!")
 
     return False
-
 
 # =================================
 # 4. TITEL UND NAVIGATION
