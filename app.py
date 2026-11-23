@@ -320,7 +320,10 @@ if bereich == "🏆 Turniere & Statistiken":
                 "Vor- und Nachname des 2. Gegners"
             )
 
-        matchdatum = st.date_input("Datum des Matches")
+matchdatum = st.date_input(
+    "Datum des Matches",
+    key="match_datum_eingabe"
+)
 
         ergebnis = st.text_input(
             "Ergebnis (z. B. 6:4, 6:3)"
