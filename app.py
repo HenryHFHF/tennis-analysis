@@ -14,18 +14,19 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.markdown("""
 <style>
 
 /* Gesamter Hintergrund */
 .stApp {
-    background-color: #0b0f0c;
-    color: #ffffff;
+    background-color: #ffffff;
+    color: #17251b;
 }
 
 /* Kopfbereich */
 [data-testid="stHeader"] {
-    background-color: #0b0f0c;
+    background-color: #ffffff;
 }
 
 /* Seitenleiste ausblenden */
@@ -35,21 +36,21 @@ st.markdown("""
 
 /* Überschriften */
 h1, h2, h3 {
-    color: #ffffff !important;
+    color: #173d27 !important;
 }
 
 /* Normale Texte */
 p, label {
-    color: #e0e8e2;
+    color: #26382c;
 }
 
 /* Eingabefelder */
 .stTextInput input,
 .stTextArea textarea,
 .stDateInput input {
-    background-color: #17231a;
-    color: white;
-    border: 1px solid #35583d;
+    background-color: #f5f8f5;
+    color: #17251b;
+    border: 1px solid #b8cbbb;
     border-radius: 8px;
 }
 
@@ -58,7 +59,7 @@ p, label {
 .stFormSubmitButton button {
     background-color: #245234;
     color: white;
-    border: 1px solid #397449;
+    border: 1px solid #245234;
     border-radius: 9px;
     font-weight: bold;
 }
@@ -67,12 +68,11 @@ p, label {
 .stFormSubmitButton button:hover {
     background-color: #347346;
     color: white;
-    border-color: #55a36a;
 }
 
 /* Navigation */
 div[role="radiogroup"] {
-    background-color: #111914;
+    background-color: #f0f5f0;
     padding: 10px;
     border-radius: 12px;
     gap: 10px;
@@ -80,18 +80,19 @@ div[role="radiogroup"] {
 
 /* Karten und Container */
 [data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #142019;
-    border-color: #294b32;
+    background-color: #f7faf7;
+    border-color: #cbdacb;
     border-radius: 12px;
 }
 
 /* Trennlinien */
 hr {
-    border-color: #294b32;
+    border-color: #d5e2d5;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 
 def supabase_verbindung(access_token=None):
