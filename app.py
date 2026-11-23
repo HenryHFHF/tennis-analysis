@@ -449,90 +449,101 @@ if bereich == "🏆 Turniere & Statistiken":
 
     st.divider()
 
-    # ---------------------------------
-    # MATCHÜBERSICHT
-    # ---------------------------------
+ 
+# ---------------------------------
+# MATCHÜBERSICHT
+# ---------------------------------
 
-    st.subheader("🎾 Matchübersicht")
+st.subheader("🎾 Matchübersicht")
 
-    if daten["matches"]:
+if daten["matches"]:
 
-        for match in reversed(daten["matches"]):
+    for match in reversed(daten["matches"]):
 
-            match_id = match["_id"]
+        match_id = match["_id"]
 
-            art = match.get("art", "Einzel")
-            partner = match.get("partner", "")
-            gegner = match.get("gegner", "")
-            gegner2 = match.get("gegner2", "")
+        art = match.get("art", "Einzel")
+        partner = match.get("partner", "")
+        gegner = match.get("gegner", "")
+        gegner2 = match.get("gegner2", "")
 
-            gewonnen = match["ausgang"] == "Gewonnen"
+        gewonnen = match["ausgang"] == "Gewonnen"
 
-            if gewonnen:
-                symbol = "🏆"
-                farbe = "green"
-            else:
-                symbol = "🥈"
-                farbe = "red"
+        if gewonnen:
+            symbol = "🏆"
+            farbe = "green"
+        else:
+            symbol = "🥈"
+            farbe = "red"
+
+        if art == "Doppel":
+            titel = f"Doppel – {partner} / {gegner} und {gegner2}"
+        else:
+            titel = f"Einzel – {gegner}"
+
+        with st.expander(
+            f"{titel} | {match['datum']}"
+        ):
+
+            st.markdown(f"**Art:** {art}")
+
+            st.markdown(
+                f"**Ausgang:** :{farbe}[{symbol} {match['ausgang']}]"
+            )
 
             if art == "Doppel":
-                titel = f"Doppel – {partner} / {gegner} und {gegner2}"
+
+                st.markdown(
+                    f"**Partner:** {partner}"
+                )
+
+                st.markdown(
+                    f"**Gegner:** {gegner} und {gegner2}"
+                )
+
             else:
-                titel = f"Einzel – {gegner}"
-
-            with st.expander(
-                f"{titel} – {match['datum']}"
-            ):
-
-                st.markdown(f"**{art}**")
 
                 st.markdown(
-                    f"**Ausgang:** {symbol} **{match['ausgang']}**"
+                    f"**Gegner:** {gegner}"
                 )
 
-                if art == "Doppel":
-                    st.markdown(
-                        f"**Partner:** **{partner}**"
+            st.markdown(
+                f":{farbe}[**Ergebnis: {match['ergebnis']}**]"
+            )
+
+            st.markdown(
+                f"**Turnier:** {match.get('turnier', '-')}"
+            )
+
+            st.divider()
+
+            if loeschschutz(f"match_{match_id}"):
+
+                if st.button(
+                    "🗑️ Match löschen",
+                    key=f"delete_match_{match_id}"
+                ):
+
+                    daten["matches"] = [
+                        m for m in daten["matches"]
+                        if m["_id"] != match_id
+                    ]
+
+                    st.session_state.pop(
+                        f"freigabe_match_{match_id}",
+                        None
                     )
-                    st.markdown(
-                        f"**Gegner:** **{gegner} und {gegner2}**"
-                    )
-                else:
-                    st.markdown(
-                        f"**Gegner:** **{gegner}**"
-                    )
 
-                st.markdown(
-                    f":{farbe}[**Ergebnis: {match['ergebnis']}**]"
-                )
+                    daten_speichern()
 
-                st.write("Turnier:", match["turnier"])
+                    st.success("Match gelöscht!")
+                    st.rerun()
 
-                if loeschschutz(f"match_{match_id}"):
+else:
+    st.info("Noch keine Matches eingetragen.")
 
-                    if st.button(
-                        "🗑️ Match löschen",
-                        key=f"delete_match_{match_id}"
-                    ):
+st.divider()
 
-                        daten["matches"] = [
-                            m for m in daten["matches"]
-                            if m["_id"] != match_id
-                        ]
-
-                        st.session_state.pop(
-                            f"freigabe_match_{match_id}",
-                            None
-                        )
-
-                        daten_speichern()
-                        st.success("Match gelöscht!")
-                        st.rerun()
-
-    else:
-        st.info("Noch keine Matches eingetragen.")
-
-    st.divider()
 
     # ---------------------------------
     # TURNIERÜBERSICHT
