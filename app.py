@@ -243,14 +243,14 @@ def supabase_verbindung(access_token=None):
 
 def daten_laden():
 
-standard = {
-    "matches": [],
-    "turniere": [],
-    "termine": [],
-    "video_url": "",
-    "tagebuch": [],
-    "gegner_notizen": {}
-}
+    standard = {
+        "matches": [],
+        "turniere": [],
+        "termine": [],
+        "video_url": "",
+        "tagebuch": [],
+        "gegner_notizen": {}
+    }
 
     user = st.session_state.get("supabase_user")
 
@@ -306,7 +306,6 @@ def daten_speichern():
 
     except Exception as e:
         st.error(f"Fehler beim Speichern: {e}")
-
 
 # =================================
 # 3. PASSWORTSCHUTZ
