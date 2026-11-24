@@ -139,6 +139,24 @@ hr {
     border-color: #d5e2d5;
 }
 
+/* Startseiten-Begrüßung */
+div[style*="linear-gradient"] h1 {
+    color: white !important;
+}
+
+div[style*="linear-gradient"] p {
+    color: white !important;
+}
+
+/* Login-Button */
+[data-testid="stPopover"] button {
+    color: white !important;
+}
+
+[data-testid="stPopover"] button p,
+[data-testid="stPopover"] button span {
+    color: white !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
