@@ -334,12 +334,13 @@ if bereich == "🏠 Startseite":
         margin-top: 20px;
         margin-bottom: 30px;
     ">
-        <h1 style="font-size: 42px; color: white;">
-            Willkommen bei H.F. Tennis Analysis
-        </h1>
-        <p style="font-size: 20px; color: #d0e5d5;">
-            Dein persönliches Tennis-Portal.
-        </p>
+<h1 style="font-size: 42px; color: #ffffff !important;">
+    Willkommen bei H.F. Tennis Analysis
+</h1>
+
+<p style="font-size: 20px; color: #ffffff !important;">
+    Dein persönliches Tennis-Portal.
+</p>
         <p style="font-size: 16px; color: #b5cbb9;">
             Analysiere deine Matches, verbessere dein Spiel
             und behalte deine Entwicklung im Blick.
