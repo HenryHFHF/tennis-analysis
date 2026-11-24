@@ -1009,281 +1009,439 @@ elif bereich == "🏆 Turniere & Statistiken":
     st.divider()
 
 
+
     # ---------------------------------
-    # MATCHÜBERSICHT
+    # MATCHÜBERSICHT MIT SUCHE UND LADEFUNKTION
     # ---------------------------------
 
     st.subheader("🎾 Matchübersicht")
 
     if daten["matches"]:
 
-        for match in reversed(daten["matches"]):
+        # Suchfeld und Filter
+        st.markdown("### 🔎 Matches suchen und filtern")
 
-            match_id = match["_id"]
+        suchbegriff = st.text_input(
+            "Suche nach Gegner, Partner, Turnier, Datum oder Ergebnis",
+            placeholder="z. B. Max Mustermann oder 6:4",
+            key="match_suche"
+        )
 
-            art = match.get("art", "Einzel")
-            partner = match.get("partner", "")
-            gegner = match.get("gegner", "")
-            gegner2 = match.get("gegner2", "")
-            ausgang = match.get("ausgang", "Gewonnen")
+        col_filter1, col_filter2 = st.columns(2)
 
-            if ausgang == "Gewonnen":
-                symbol = "🏆"
-                farbe = "green"
-            else:
-                symbol = "🥈"
-                farbe = "red"
+        with col_filter1:
+            filter_art = st.selectbox(
+                "Match-Art",
+                ["Alle", "Einzel", "Doppel"],
+                key="match_filter_art"
+            )
 
-            if art == "Doppel":
-                titel = f"Doppel – {partner} / {gegner} und {gegner2}"
-            else:
-                titel = f"Einzel – {gegner}"
+        with col_filter2:
+            filter_ausgang = st.selectbox(
+                "Ergebnis",
+                ["Alle", "Gewonnen", "Verloren"],
+                key="match_filter_ausgang"
+            )
 
-            with st.container(border=True):
+        # Alle Matches zunächst neueste zuerst
+        alle_matches = list(reversed(daten["matches"]))
 
-                st.markdown(f"### {titel}")
-                st.caption(match.get("datum", ""))
+        # Suchbegriff und Filter anwenden
+        gefilterte_matches = []
 
-                st.markdown(
-                    f"**Ausgang:** :{farbe}[{symbol} {ausgang}]"
-                )
+        for match in alle_matches:
+
+            suchtext = " ".join([
+                str(match.get("gegner", "")),
+                str(match.get("gegner2", "")),
+                str(match.get("partner", "")),
+                str(match.get("turnier", "")),
+                str(match.get("datum", "")),
+                str(match.get("ergebnis", "")),
+                str(match.get("art", "Einzel")),
+                str(match.get("ausgang", ""))
+            ]).casefold()
+
+            if suchbegriff.strip():
+                if suchbegriff.strip().casefold() not in suchtext:
+                    continue
+
+            if (
+                filter_art != "Alle"
+                and match.get("art", "Einzel") != filter_art
+            ):
+                continue
+
+            if (
+                filter_ausgang != "Alle"
+                and match.get("ausgang", "Gewonnen") != filter_ausgang
+            ):
+                continue
+
+            gefilterte_matches.append(match)
+
+        # Anzahl der angezeigten Matches verwalten
+        if "match_anzeige_limit" not in st.session_state:
+            st.session_state.match_anzeige_limit = 10
+
+        # Bei einer neuen Suche oder Filterauswahl wieder vorne beginnen
+        filter_signatur = (
+            suchbegriff,
+            filter_art,
+            filter_ausgang
+        )
+
+        if (
+            st.session_state.get("match_filter_signatur")
+            != filter_signatur
+        ):
+            st.session_state.match_filter_signatur = filter_signatur
+            st.session_state.match_anzeige_limit = 10
+
+        anzeige_limit = st.session_state.match_anzeige_limit
+
+        sichtbare_matches = gefilterte_matches[:anzeige_limit]
+
+        st.divider()
+
+        st.write(
+            f"**{len(gefilterte_matches)} Matches gefunden**"
+        )
+
+        st.caption(
+            f"Du siehst {len(sichtbare_matches)} "
+            f"von {len(gefilterte_matches)} Matches."
+        )
+
+        # ---------------------------------
+        # EINZELNE MATCHES ANZEIGEN
+        # ---------------------------------
+
+        if gefilterte_matches:
+
+            for match in sichtbare_matches:
+
+                match_id = match["_id"]
+
+                art = match.get("art", "Einzel")
+                partner = match.get("partner", "")
+                gegner = match.get("gegner", "")
+                gegner2 = match.get("gegner2", "")
+                ausgang = match.get("ausgang", "Gewonnen")
+
+                if ausgang == "Gewonnen":
+                    symbol = "🏆"
+                    farbe = "green"
+                else:
+                    symbol = "🥈"
+                    farbe = "red"
 
                 if art == "Doppel":
+                    titel = (
+                        f"Doppel – {partner} / "
+                        f"{gegner} und {gegner2}"
+                    )
+                else:
+                    titel = f"Einzel – {gegner}"
 
-                    st.markdown(f"**Partner:** {partner}")
-                    st.markdown("**Gegner:**")
+                with st.container(border=True):
 
-                    col_gegner1, col_gegner2 = st.columns(2)
+                    st.markdown(f"### {titel}")
+                    st.caption(match.get("datum", ""))
 
-                    with col_gegner1:
+                    st.markdown(
+                        f"**Ausgang:** :{farbe}[{symbol} {ausgang}]"
+                    )
+
+                    if art == "Doppel":
+
+                        st.markdown(f"**Partner:** {partner}")
+                        st.markdown("**Gegner:**")
+
+                        col_gegner1, col_gegner2 = st.columns(2)
+
+                        with col_gegner1:
+
+                            if st.button(
+                                f"👤 {gegner}",
+                                key=f"h2h_gegner1_{match_id}"
+                            ):
+                                st.session_state["h2h_gegner"] = gegner
+                                st.rerun()
+
+                        with col_gegner2:
+
+                            if st.button(
+                                f"👤 {gegner2}",
+                                key=f"h2h_gegner2_{match_id}"
+                            ):
+                                st.session_state["h2h_gegner"] = gegner2
+                                st.rerun()
+
+                    else:
+
+                        st.markdown("**Gegner:**")
 
                         if st.button(
                             f"👤 {gegner}",
-                            key=f"h2h_gegner1_{match_id}"
+                            key=f"h2h_gegner_{match_id}"
                         ):
-
                             st.session_state["h2h_gegner"] = gegner
                             st.rerun()
 
-                    with col_gegner2:
+                    st.markdown(
+                        f"## :{farbe}[{match.get('ergebnis', '')}]"
+                    )
 
-                        if st.button(
-                            f"👤 {gegner2}",
-                            key=f"h2h_gegner2_{match_id}"
-                        ):
-
-                            st.session_state["h2h_gegner"] = gegner2
-                            st.rerun()
-
-                else:
-
-                    st.markdown("**Gegner:**")
+                    st.markdown(
+                        f"**Turnier:** {match.get('turnier', '-')}"
+                    )
 
                     if st.button(
-                        f"👤 {gegner}",
-                        key=f"h2h_gegner_{match_id}"
+                        "✏️ Bearbeiten",
+                        key=f"bearbeiten_match_{match_id}"
                     ):
-
-                        st.session_state["h2h_gegner"] = gegner
+                        st.session_state[
+                            "aktives_match_bearbeiten"
+                        ] = match_id
                         st.rerun()
-                st.markdown(
-                    f"## :{farbe}[{match.get('ergebnis', '')}]"
-                )
 
-                st.markdown(
-                    f"**Turnier:** {match.get('turnier', '-')}"
-                )
+                    if st.session_state.get(
+                        "aktives_match_bearbeiten"
+                    ) == match_id:
 
-                if st.button(
-                    "✏️ Bearbeiten",
-                    key=f"bearbeiten_match_{match_id}"
-                ):
-                    st.session_state["aktives_match_bearbeiten"] = match_id
-                    st.rerun()
+                        if bearbeitungsschutz(f"match_{match_id}"):
 
-                if st.session_state.get(
-                    "aktives_match_bearbeiten"
-                ) == match_id:
+                            st.divider()
+                            st.markdown("### ✏️ Match bearbeiten")
 
-                    if bearbeitungsschutz(f"match_{match_id}"):
-
-                        st.divider()
-                        st.markdown("### ✏️ Match bearbeiten")
-
-                        art_neu = st.selectbox(
-                            "Matchart",
-                            ["Einzel", "Doppel"],
-                            index=0 if art == "Einzel" else 1,
-                            key=f"edit_art_{match_id}"
-                        )
-
-                        if art_neu == "Doppel":
-
-                            partner_neu = st.text_input(
-                                "Partner",
-                                value=partner,
-                                key=f"edit_partner_{match_id}"
+                            art_neu = st.selectbox(
+                                "Matchart",
+                                ["Einzel", "Doppel"],
+                                index=0 if art == "Einzel" else 1,
+                                key=f"edit_art_{match_id}"
                             )
 
-                            gegner_neu = st.text_input(
-                                "1. Gegner",
-                                value=gegner,
-                                key=f"edit_gegner_{match_id}"
+                            if art_neu == "Doppel":
+
+                                partner_neu = st.text_input(
+                                    "Partner",
+                                    value=partner,
+                                    key=f"edit_partner_{match_id}"
+                                )
+
+                                gegner_neu = st.text_input(
+                                    "1. Gegner",
+                                    value=gegner,
+                                    key=f"edit_gegner_{match_id}"
+                                )
+
+                                gegner2_neu = st.text_input(
+                                    "2. Gegner",
+                                    value=gegner2,
+                                    key=f"edit_gegner2_{match_id}"
+                                )
+
+                            else:
+
+                                partner_neu = ""
+                                gegner2_neu = ""
+
+                                gegner_neu = st.text_input(
+                                    "Name des Gegners",
+                                    value=gegner,
+                                    key=f"edit_gegner_{match_id}"
+                                )
+
+                            datum_neu = st.date_input(
+                                "Datum",
+                                value=date.fromisoformat(match["datum"]),
+                                key=f"edit_datum_{match_id}"
                             )
 
-                            gegner2_neu = st.text_input(
-                                "2. Gegner",
-                                value=gegner2,
-                                key=f"edit_gegner2_{match_id}"
+                            ergebnis_neu = st.text_input(
+                                "Ergebnis",
+                                value=match.get("ergebnis", ""),
+                                key=f"edit_ergebnis_{match_id}"
                             )
 
-                        else:
+                            turnier_optionen = [
+                                t.get("name", "")
+                                for t in daten.get("turniere", [])
+                                if t.get("name")
+                            ]
 
-                            partner_neu = ""
-                            gegner2_neu = ""
+                            aktuelles_turnier = match.get("turnier", "-")
 
-                            gegner_neu = st.text_input(
-                                "Name des Gegners",
-                                value=gegner,
-                                key=f"edit_gegner_{match_id}"
+                            if aktuelles_turnier not in turnier_optionen:
+                                turnier_optionen.append(aktuelles_turnier)
+
+                            if not turnier_optionen:
+                                turnier_optionen = ["-"]
+
+                            turnier_neu = st.selectbox(
+                                "Turnier",
+                                turnier_optionen,
+                                index=turnier_optionen.index(
+                                    aktuelles_turnier
+                                ),
+                                key=f"edit_turnier_{match_id}"
                             )
 
-                        datum_neu = st.date_input(
-                            "Datum",
-                            value=date.fromisoformat(match["datum"]),
-                            key=f"edit_datum_{match_id}"
-                        )
+                            ausgang_neu = st.selectbox(
+                                "Matchausgang",
+                                ["Gewonnen", "Verloren"],
+                                index=0 if ausgang == "Gewonnen" else 1,
+                                key=f"edit_ausgang_{match_id}"
+                            )
 
-                        ergebnis_neu = st.text_input(
-                            "Ergebnis",
-                            value=match.get("ergebnis", ""),
-                            key=f"edit_ergebnis_{match_id}"
-                        )
+                            col1, col2 = st.columns(2)
 
-                        turnier_optionen = [
-                            t.get("name", "")
-                            for t in daten.get("turniere", [])
-                            if t.get("name")
-                        ]
+                            with col1:
 
-                        aktuelles_turnier = match.get("turnier", "-")
+                                if st.button(
+                                    "💾 Änderungen speichern",
+                                    key=f"save_match_{match_id}"
+                                ):
 
-                        if aktuelles_turnier not in turnier_optionen:
-                            turnier_optionen.append(aktuelles_turnier)
-
-                        if not turnier_optionen:
-                            turnier_optionen = ["-"]
-
-                        turnier_neu = st.selectbox(
-                            "Turnier",
-                            turnier_optionen,
-                            index=turnier_optionen.index(aktuelles_turnier),
-                            key=f"edit_turnier_{match_id}"
-                        )
-
-                        ausgang_neu = st.selectbox(
-                            "Matchausgang",
-                            ["Gewonnen", "Verloren"],
-                            index=0 if ausgang == "Gewonnen" else 1,
-                            key=f"edit_ausgang_{match_id}"
-                        )
-
-                        col1, col2 = st.columns(2)
-
-                        with col1:
-
-                            if st.button(
-                                "💾 Änderungen speichern",
-                                key=f"save_match_{match_id}"
-                            ):
-
-                                if gegner_neu.strip() and ergebnis_neu.strip():
-
-                                    if art_neu == "Doppel" and not (
-                                        partner_neu.strip()
-                                        and gegner2_neu.strip()
+                                    if (
+                                        gegner_neu.strip()
+                                        and ergebnis_neu.strip()
                                     ):
-                                        st.warning(
-                                            "Bitte Partner und beide Gegner eintragen."
-                                        )
+
+                                        if art_neu == "Doppel" and not (
+                                            partner_neu.strip()
+                                            and gegner2_neu.strip()
+                                        ):
+                                            st.warning(
+                                                "Bitte Partner und beide Gegner eintragen."
+                                            )
+
+                                        else:
+
+                                            altes_datum = match["datum"]
+
+                                            if art == "Doppel":
+                                                alter_titel = (
+                                                    f"Match gegen {gegner} "
+                                                    f"und {gegner2}"
+                                                )
+                                            else:
+                                                alter_titel = (
+                                                    f"Match gegen {gegner}"
+                                                )
+
+                                            if art_neu == "Doppel":
+                                                neuer_titel = (
+                                                    f"Match gegen {gegner_neu} "
+                                                    f"und {gegner2_neu}"
+                                                )
+                                            else:
+                                                neuer_titel = (
+                                                    f"Match gegen {gegner_neu}"
+                                                )
+
+                                            match["art"] = art_neu
+                                            match["partner"] = partner_neu
+                                            match["gegner"] = gegner_neu
+                                            match["gegner2"] = gegner2_neu
+                                            match["datum"] = datum_neu.isoformat()
+                                            match["ergebnis"] = ergebnis_neu
+                                            match["turnier"] = turnier_neu
+                                            match["ausgang"] = ausgang_neu
+
+                                            for termin in daten["termine"]:
+
+                                                if (
+                                                    termin.get("typ") == "Match"
+                                                    and termin.get("titel") == alter_titel
+                                                    and termin.get("datum") == altes_datum
+                                                ):
+                                                    termin["titel"] = neuer_titel
+                                                    termin["datum"] = datum_neu.isoformat()
+                                                    break
+
+                                            daten_speichern()
+
+                                            st.session_state.pop(
+                                                f"freigabe_match_{match_id}",
+                                                None
+                                            )
+
+                                            st.session_state.pop(
+                                                "aktives_match_bearbeiten",
+                                                None
+                                            )
+
+                                            st.success(
+                                                "Match erfolgreich geändert!"
+                                            )
+                                            st.rerun()
 
                                     else:
-
-                                        altes_datum = match["datum"]
-
-                                        if art == "Doppel":
-                                            alter_titel = (
-                                                f"Match gegen {gegner} und {gegner2}"
-                                            )
-                                        else:
-                                            alter_titel = f"Match gegen {gegner}"
-
-                                        if art_neu == "Doppel":
-                                            neuer_titel = (
-                                                f"Match gegen {gegner_neu} "
-                                                f"und {gegner2_neu}"
-                                            )
-                                        else:
-                                            neuer_titel = f"Match gegen {gegner_neu}"
-
-                                        match["art"] = art_neu
-                                        match["partner"] = partner_neu
-                                        match["gegner"] = gegner_neu
-                                        match["gegner2"] = gegner2_neu
-                                        match["datum"] = datum_neu.isoformat()
-                                        match["ergebnis"] = ergebnis_neu
-                                        match["turnier"] = turnier_neu
-                                        match["ausgang"] = ausgang_neu
-
-                                        for termin in daten["termine"]:
-
-                                            if (
-                                                termin.get("typ") == "Match"
-                                                and termin.get("titel") == alter_titel
-                                                and termin.get("datum") == altes_datum
-                                            ):
-                                                termin["titel"] = neuer_titel
-                                                termin["datum"] = datum_neu.isoformat()
-                                                break
-
-                                        daten_speichern()
-
-                                        st.session_state.pop(
-                                            f"freigabe_match_{match_id}",
-                                            None
+                                        st.warning(
+                                            "Bitte Gegner und Ergebnis eintragen."
                                         )
 
-                                        st.session_state.pop(
-                                            "aktives_match_bearbeiten",
-                                            None
-                                        )
+                            with col2:
 
-                                        st.success("Match erfolgreich geändert!")
-                                        st.rerun()
+                                if st.button(
+                                    "Abbrechen",
+                                    key=f"cancel_match_{match_id}"
+                                ):
 
-                                else:
-                                    st.warning(
-                                        "Bitte Gegner und Ergebnis eintragen."
+                                    st.session_state.pop(
+                                        f"freigabe_match_{match_id}",
+                                        None
                                     )
 
-                        with col2:
+                                    st.session_state.pop(
+                                        "aktives_match_bearbeiten",
+                                        None
+                                    )
 
-                            if st.button(
-                                "Abbrechen",
-                                key=f"cancel_match_{match_id}"
-                            ):
+                                    st.rerun()
 
-                                st.session_state.pop(
-                                    f"freigabe_match_{match_id}",
-                                    None
-                                )
+            # ---------------------------------
+            # WEITERE MATCHES LADEN
+            # ---------------------------------
 
-                                st.session_state.pop(
-                                    "aktives_match_bearbeiten",
-                                    None
-                                )
+            if len(sichtbare_matches) < len(gefilterte_matches):
 
-                                st.rerun()
+                st.divider()
+
+                if st.button(
+                    "⬇️ Weitere 10 Spiele laden",
+                    key="mehr_matches_laden",
+                    use_container_width=True
+                ):
+
+                    st.session_state.match_anzeige_limit += 10
+                    st.rerun()
+
+            else:
+
+                st.success("Alle passenden Matches werden angezeigt.")
+
+        else:
+            st.info(
+                "Keine Matches gefunden. "
+                "Ändere deine Suche oder die Filter."
+            )
+
+        # ---------------------------------
+        # HEAD-TO-HEAD-FENSTER ÖFFNEN
+        # ---------------------------------
+
+        if st.session_state.get("h2h_gegner"):
+
+            head_to_head_dialog(
+                st.session_state["h2h_gegner"],
+                daten
+            )
+
+    else:
+        st.info("Du hast noch keine Matches eingetragen.")
 
         # ---------------------------------
         # HEAD-TO-HEAD-FENSTER ÖFFNEN
