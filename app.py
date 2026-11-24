@@ -263,22 +263,43 @@ def bearbeitungsschutz(key):
     return False
 
 
+
 # =================================
 # 4. TITEL UND NAVIGATION
 # =================================
 
-col_titel, col_login = st.columns([4, 1])
+# Login-Status vorbereiten
+if "supabase_user" not in st.session_state:
+    st.session_state.supabase_user = None
 
+
+# Oberer Kopfbereich
+col_brand, col_login = st.columns([5, 1])
+
+# LOGO UND TITEL LINKS
+with col_brand:
+
+    col_logo, col_titel = st.columns([1, 4])
+
+    with col_logo:
+        st.image("logo.png", width=110)
+
+    with col_titel:
+        st.title("H.F. Tennis Analysis")
+        st.write("Dein persönliches Tennis-Portal.")
+
+
+# LOGIN GANZ RECHTS
 with col_login:
-
-    if "supabase_user" not in st.session_state:
-        st.session_state.supabase_user = None
 
     if st.session_state.supabase_user is None:
 
         with st.popover("🔐 Login"):
 
-            email = st.text_input("E-Mail", key="login_email")
+            email = st.text_input(
+                "E-Mail",
+                key="login_email"
+            )
 
             passwort = st.text_input(
                 "Passwort",
@@ -305,7 +326,9 @@ with col_login:
                     st.rerun()
 
                 except Exception:
-                    st.error("Anmeldung fehlgeschlagen. Bitte Daten prüfen.")
+                    st.error(
+                        "Anmeldung fehlgeschlagen. Bitte Daten prüfen."
+                    )
 
     else:
 
@@ -318,23 +341,14 @@ with col_login:
             st.rerun()
 
 
-col_logo, col_titel = st.columns([1, 4])
-
-with col_logo:
-    st.image("logo.png", width=130)
-
-with col_titel:
-    st.title("H.F. Tennis Analysis")
-    st.write("Dein persönliches Tennis-Portal.")
-
-
+# DATEN LADEN
 if "daten" not in st.session_state:
     st.session_state.daten = daten_laden()
 
 daten = st.session_state.daten
 
 
-
+# NAVIGATION DIREKT UNTER DEM KOPFBEREICH
 bereich = st.radio(
     "Navigation",
     [
@@ -347,6 +361,7 @@ bereich = st.radio(
     label_visibility="collapsed",
     key="bereich_nav"
 )
+
 
 
 # =================================
