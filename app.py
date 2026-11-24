@@ -20,6 +20,27 @@ st.set_page_config(
 # =================================
 
 st.markdown("""
+/* Startseiten-Begrüßung */
+.stApp h1 {
+    color: #ffffff !important;
+}
+
+/* Login-Button */
+[data-testid="stPopover"] button {
+    background-color: #245234 !important;
+    color: #ffffff !important;
+}
+
+[data-testid="stPopover"] button * {
+    color: #ffffff !important;
+}
+
+/* Text im Login-Fenster */
+[data-testid="stPopoverBody"] p,
+[data-testid="stPopoverBody"] label,
+[data-testid="stPopoverBody"] span {
+    color: #ffffff !important;
+}
 <style>
 
 /* Gesamter Hintergrund */
