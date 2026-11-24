@@ -4,6 +4,7 @@ import pandas as pd
 import uuid
 from datetime import date
 
+
 # =================================
 # 1. GRUNDEINSTELLUNGEN
 # =================================
@@ -14,6 +15,9 @@ st.set_page_config(
     layout="wide"
 )
 
+# =================================
+# DESIGN UND FARBEN
+# =================================
 
 st.markdown("""
 <style>
@@ -48,8 +52,8 @@ p, label {
 .stTextInput input,
 .stTextArea textarea,
 .stDateInput input {
-    background-color: #f5f8f5;
-    color: #17251b;
+    background-color: #f5f8f5 !important;
+    color: #17251b !important;
     border: 1px solid #b8cbbb;
     border-radius: 8px;
 }
@@ -57,17 +61,21 @@ p, label {
 /* Buttons */
 .stButton button,
 .stFormSubmitButton button {
-    background-color: #245234;
-    color: white;
+    background-color: #245234 !important;
+    color: #ffffff !important;
     border: 1px solid #245234;
     border-radius: 9px;
     font-weight: bold;
 }
 
+.stButton button *,
+.stFormSubmitButton button * {
+    color: #ffffff !important;
+}
+
 .stButton button:hover,
 .stFormSubmitButton button:hover {
-    background-color: #347346;
-    color: white;
+    background-color: #347346 !important;
 }
 
 /* Navigation */
@@ -78,22 +86,31 @@ div[role="radiogroup"] {
     gap: 10px;
 }
 
-/* Karten und Container */
+/* Grüne Karten */
 [data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #173d27;
-    border: 1px solid #245234;
+    background-color: #173d27 !important;
+    border: 1px solid #245234 !important;
     border-radius: 12px;
-    color: white;
 }
 
-/* Alle Texte innerhalb der dunkelgrünen Karten */
-[data-testid="stVerticalBlockBorderWrapper"] p,
-[data-testid="stVerticalBlockBorderWrapper"] span,
+/* Weiße Schrift in grünen Karten */
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] *,
 [data-testid="stVerticalBlockBorderWrapper"] label,
-[data-testid="stVerticalBlockBorderWrapper"] h1,
-[data-testid="stVerticalBlockBorderWrapper"] h2,
-[data-testid="stVerticalBlockBorderWrapper"] h3 {
-    color: white !important;
+[data-testid="stVerticalBlockBorderWrapper"] p {
+    color: #ffffff !important;
+}
+
+/* Login und Popover */
+[data-testid="stPopover"] button {
+    color: #173d27 !important;
+}
+
+[data-testid="stPopoverBody"],
+[data-testid="stPopoverBody"] p,
+[data-testid="stPopoverBody"] label,
+[data-testid="stPopoverBody"] span {
+    color: #173d27 !important;
 }
 
 /* Trennlinien */
@@ -103,19 +120,6 @@ hr {
 
 </style>
 """, unsafe_allow_html=True)
-
-
-
-def supabase_verbindung(access_token=None):
-    url = st.secrets["supabase_url"]
-    key = st.secrets["supabase_key"]
-
-    client = create_client(url, key)
-
-    if access_token:
-        client.postgrest.auth(access_token)
-
-    return client
 
 
 # =================================
