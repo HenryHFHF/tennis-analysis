@@ -337,7 +337,6 @@ if bereich == "🏠 Startseite":
 <h1 style="font-size: 42px; color: #ffffff !important;">
     Willkommen bei H.F. Tennis Analysis
 </h1>
-
 <p style="font-size: 20px; color: #ffffff !important;">
     Dein persönliches Tennis-Portal.
 </p>
