@@ -15,32 +15,12 @@ st.set_page_config(
     layout="wide"
 )
 
+
 # =================================
 # DESIGN UND FARBEN
 # =================================
 
 st.markdown("""
-/* Startseiten-Begrüßung */
-.stApp h1 {
-    color: #ffffff !important;
-}
-
-/* Login-Button */
-[data-testid="stPopover"] button {
-    background-color: #245234 !important;
-    color: #ffffff !important;
-}
-
-[data-testid="stPopover"] button * {
-    color: #ffffff !important;
-}
-
-/* Text im Login-Fenster */
-[data-testid="stPopoverBody"] p,
-[data-testid="stPopoverBody"] label,
-[data-testid="stPopoverBody"] span {
-    color: #ffffff !important;
-}
 <style>
 
 /* Gesamter Hintergrund */
@@ -64,6 +44,12 @@ h1, h2, h3 {
     color: #173d27 !important;
 }
 
+/* Startseiten-Begrüßung */
+div[style*="linear-gradient"] h1,
+div[style*="linear-gradient"] p {
+    color: #ffffff !important;
+}
+
 /* Normale Texte */
 p, label {
     color: #26382c;
@@ -79,7 +65,7 @@ p, label {
     border-radius: 8px;
 }
 
-/* Buttons */
+/* Allgemeine Buttons */
 .stButton button,
 .stFormSubmitButton button {
     background-color: #245234 !important;
@@ -122,15 +108,37 @@ div[role="radiogroup"] {
     color: #ffffff !important;
 }
 
-/* Login und Popover */
-[data-testid="stPopover"] button {
-    color: #173d27 !important;
+/* Äußerer Login-Button */
+[data-testid="stPopover"] > button {
+    background-color: #245234 !important;
+    color: #ffffff !important;
 }
 
-[data-testid="stPopoverBody"],
+[data-testid="stPopover"] > button * {
+    color: #ffffff !important;
+}
+
+/* Login-Fenster */
+[data-testid="stPopoverBody"] {
+    background-color: #ffffff !important;
+}
+
 [data-testid="stPopoverBody"] p,
 [data-testid="stPopoverBody"] label,
 [data-testid="stPopoverBody"] span {
+    color: #173d27 !important;
+}
+
+/* Anmelden-Button im geöffneten Login-Fenster */
+[data-testid="stPopoverBody"] .stButton button,
+[data-testid="stPopoverBody"] .stFormSubmitButton button {
+    background-color: #ffffff !important;
+    color: #173d27 !important;
+    border: 1px solid #245234 !important;
+}
+
+[data-testid="stPopoverBody"] .stButton button *,
+[data-testid="stPopoverBody"] .stFormSubmitButton button * {
     color: #173d27 !important;
 }
 
@@ -139,26 +147,9 @@ hr {
     border-color: #d5e2d5;
 }
 
-/* Startseiten-Begrüßung */
-div[style*="linear-gradient"] h1 {
-    color: white !important;
-}
-
-div[style*="linear-gradient"] p {
-    color: white !important;
-}
-
-/* Login-Button */
-[data-testid="stPopover"] button {
-    color: white !important;
-}
-
-[data-testid="stPopover"] button p,
-[data-testid="stPopover"] button span {
-    color: white !important;
-}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # =================================
