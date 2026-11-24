@@ -2,6 +2,8 @@ import streamlit as st
 from supabase import create_client
 import pandas as pd
 import uuid
+import base64
+from pathlib import Path
 from datetime import date
 
 
@@ -85,12 +87,77 @@ p, label {
     background-color: #347346 !important;
 }
 
-/* Navigation */
-div[role="radiogroup"] {
-    background-color: #f0f5f0;
-    padding: 10px;
-    border-radius: 12px;
-    gap: 10px;
+/* Dunkler Kopfbereich */
+.st-key-top_header {
+    background: linear-gradient(120deg, #12351f, #07110b) !important;
+    padding: 20px 26px 16px 26px;
+    border: 1px solid #315d3d;
+    border-radius: 18px;
+    margin-bottom: 12px;
+}
+
+.st-key-top_header .brand-title {
+    color: #ffffff !important;
+    font-size: 30px;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.st-key-top_header .brand-subtitle,
+.st-key-top_header .logged-in-label {
+    color: #d5e5d8 !important;
+    font-size: 15px;
+    margin: 5px 0 0 0;
+}
+
+/* Vier große Navigationsfelder */
+.st-key-main_navigation [role="radiogroup"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px !important;
+    width: 100%;
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] label {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 62px;
+    padding: 12px 10px !important;
+    background: #173d27 !important;
+    border: 1px solid #315d3d !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    text-align: center;
+    font-weight: 700;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.st-key-main_navigation [role="radiogroup"] label * {
+    color: #ffffff !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] label:hover {
+    background: #245234 !important;
+    border-color: #6b9b75 !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] label:has(input:checked) {
+    background: #347346 !important;
+    border: 2px solid #b5d4bb !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] input {
+    display: none !important;
+}
+
+@media (max-width: 800px) {
+    .st-key-main_navigation [role="radiogroup"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 /* Grüne Karten */
@@ -108,14 +175,19 @@ div[role="radiogroup"] {
     color: #ffffff !important;
 }
 
-/* Äußerer Login-Button */
-[data-testid="stPopover"] > button {
-    background-color: #245234 !important;
-    color: #ffffff !important;
+/* Login-Button im Kopfbereich */
+.st-key-top_header [data-testid="stPopover"] > button,
+.st-key-top_header .stButton button {
+    background-color: #f3f7f3 !important;
+    color: #173d27 !important;
+    border: 1px solid #d5e5d8 !important;
+    border-radius: 10px;
+    font-weight: 700;
 }
 
-[data-testid="stPopover"] > button * {
-    color: #ffffff !important;
+.st-key-top_header [data-testid="stPopover"] > button * ,
+.st-key-top_header .stButton button * {
+    color: #173d27 !important;
 }
 
 /* Login-Fenster */
@@ -150,6 +222,22 @@ hr {
 </style>
 """, unsafe_allow_html=True)
 
+
+
+# =================================
+# SUPABASE-VERBINDUNG
+# =================================
+
+def supabase_verbindung(access_token=None):
+    url = st.secrets["supabase_url"]
+    key = st.secrets["supabase_key"]
+
+    client = create_client(url, key)
+
+    if access_token:
+        client.postgrest.auth(access_token)
+
+    return client
 
 
 # =================================
@@ -273,72 +361,74 @@ if "supabase_user" not in st.session_state:
     st.session_state.supabase_user = None
 
 
-# Oberer Kopfbereich
-col_brand, col_login = st.columns([5, 1])
+# OBERER KOPFBEREICH
+with st.container(key="top_header"):
 
-# LOGO UND TITEL LINKS
-with col_brand:
+    col_brand, col_login = st.columns([6, 1])
 
-    col_logo, col_titel = st.columns([1, 4])
+    with col_brand:
+        col_logo, col_titel = st.columns([1, 6], vertical_alignment="center")
 
-    with col_logo:
-        st.image("logo.png", width=110)
+        with col_logo:
+            st.image("logo.png", width=85)
 
-    with col_titel:
-        st.title("H.F. Tennis Analysis")
-        st.write("Dein persönliches Tennis-Portal.")
-
-
-# LOGIN GANZ RECHTS
-with col_login:
-
-    if st.session_state.supabase_user is None:
-
-        with st.popover("🔐 Login"):
-
-            email = st.text_input(
-                "E-Mail",
-                key="login_email"
+        with col_titel:
+            st.markdown(
+                "<h1 class='brand-title'>H.F. Tennis Analysis</h1>"
+                "<p class='brand-subtitle'>Dein persönliches Tennis-Portal.</p>",
+                unsafe_allow_html=True
             )
 
-            passwort = st.text_input(
-                "Passwort",
-                type="password",
-                key="login_passwort"
+    with col_login:
+        if st.session_state.supabase_user is None:
+
+            with st.popover("🔐 Login"):
+
+                email = st.text_input(
+                    "E-Mail",
+                    key="login_email"
+                )
+
+                passwort = st.text_input(
+                    "Passwort",
+                    type="password",
+                    key="login_passwort"
+                )
+
+                if st.button("Anmelden"):
+
+                    try:
+                        client = supabase_verbindung()
+
+                        antwort = client.auth.sign_in_with_password({
+                            "email": email,
+                            "password": passwort
+                        })
+
+                        st.session_state.supabase_user = antwort.user
+                        st.session_state.supabase_token = antwort.session.access_token
+
+                        st.session_state.pop("daten", None)
+
+                        st.success("Erfolgreich angemeldet!")
+                        st.rerun()
+
+                    except Exception:
+                        st.error(
+                            "Anmeldung fehlgeschlagen. Bitte Daten prüfen."
+                        )
+
+        else:
+            st.markdown(
+                "<p class='logged-in-label'>Angemeldet</p>",
+                unsafe_allow_html=True
             )
 
-            if st.button("Anmelden"):
-
-                try:
-                    client = supabase_verbindung()
-
-                    antwort = client.auth.sign_in_with_password({
-                        "email": email,
-                        "password": passwort
-                    })
-
-                    st.session_state.supabase_user = antwort.user
-                    st.session_state.supabase_token = antwort.session.access_token
-
-                    st.session_state.pop("daten", None)
-
-                    st.success("Erfolgreich angemeldet!")
-                    st.rerun()
-
-                except Exception:
-                    st.error(
-                        "Anmeldung fehlgeschlagen. Bitte Daten prüfen."
-                    )
-
-    else:
-
-        st.write("Angemeldet")
-
-        if st.button("Abmelden"):
-            st.session_state.supabase_user = None
-            st.session_state.supabase_token = None
-            st.session_state.pop("daten", None)
-            st.rerun()
+            if st.button("Abmelden"):
+                st.session_state.supabase_user = None
+                st.session_state.supabase_token = None
+                st.session_state.pop("daten", None)
+                st.rerun()
 
 
 # DATEN LADEN
@@ -348,20 +438,20 @@ if "daten" not in st.session_state:
 daten = st.session_state.daten
 
 
-# NAVIGATION DIREKT UNTER DEM KOPFBEREICH
-bereich = st.radio(
-    "Navigation",
-    [
-        "🏠 Startseite",
-        "🏆 Turniere & Statistiken",
-        "📈 Verbesserung & Training",
-        "📅 Kalender & Planung"
-    ],
-    horizontal=True,
-    label_visibility="collapsed",
-    key="bereich_nav"
-)
-
+# NAVIGATION ALS VIER GROSSE FELDER
+with st.container(key="main_navigation"):
+    bereich = st.radio(
+        "Navigation",
+        [
+            "🏠 Startseite",
+            "🏆 Turniere & Statistiken",
+            "📈 Verbesserung & Training",
+            "📅 Kalender & Planung"
+        ],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="bereich_nav"
+    )
 
 
 # =================================
@@ -370,22 +460,41 @@ bereich = st.radio(
 
 if bereich == "🏠 Startseite":
 
-    st.markdown("""
+    # Tennisplatz-Bild für den Willkommensbereich laden
+    try:
+        bild_daten = Path("startseite_tennis.jpg").read_bytes()
+        bild_base64 = base64.b64encode(bild_daten).decode("utf-8")
+        hero_hintergrund = (
+            "linear-gradient(90deg, rgba(5, 20, 11, 0.88), "
+            "rgba(5, 20, 11, 0.30)), "
+            f"url('data:image/jpeg;base64,{bild_base64}')"
+        )
+    except FileNotFoundError:
+        hero_hintergrund = "linear-gradient(135deg, #163d25, #0b0f0c)"
+
+    st.markdown(f"""
     <div style="
-        background: linear-gradient(135deg, #163d25, #0b0f0c);
-        padding: 55px 35px;
+        background-image: {hero_hintergrund};
+        background-size: cover;
+        background-position: center;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 48px 42px;
         border-radius: 20px;
         border: 1px solid #315d3d;
-        margin-top: 20px;
+        margin-top: 18px;
         margin-bottom: 30px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
     ">
-<h1 style="font-size: 42px; color: #ffffff !important;">
-    Willkommen bei H.F. Tennis Analysis
-</h1>
-<p style="font-size: 20px; color: #ffffff !important;">
-    Dein persönliches Tennis-Portal.
-</p>
-        <p style="font-size: 16px; color: #b5cbb9;">
+        <h1 style="font-size: 42px; color: #ffffff !important; margin-bottom: 10px;">
+            Willkommen bei H.F. Tennis Analysis
+        </h1>
+        <p style="font-size: 20px; color: #ffffff !important; margin-bottom: 8px;">
+            Dein persönliches Tennis-Portal.
+        </p>
+        <p style="font-size: 16px; color: #e1eee3 !important; max-width: 650px;">
             Analysiere deine Matches, verbessere dein Spiel
             und behalte deine Entwicklung im Blick.
         </p>
