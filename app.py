@@ -210,7 +210,60 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
 [data-testid="stPopoverBody"] .stFormSubmitButton button * {
     color: #ffffff !important;
 }
+/* =================================
+   HEAD-TO-HEAD-FENSTER SCHWARZ
+   ================================= */
 
+/* Hintergrund des Dialogfensters */
+[data-testid="stDialog"] {
+    background-color: #000000 !important;
+}
+
+/* Eigentliche Dialogfläche */
+[data-testid="stDialog"] > div,
+[data-testid="stDialog"] [role="dialog"] {
+    background-color: #000000 !important;
+    border: 1px solid #315d3d !important;
+    border-radius: 16px !important;
+}
+
+/* Alle inneren Bereiche schwarz */
+[data-testid="stDialog"] [data-testid="stVerticalBlock"],
+[data-testid="stDialog"] [data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #000000 !important;
+    border-color: #315d3d !important;
+}
+
+/* Überschriften und Texte weiß */
+[data-testid="stDialog"] h1,
+[data-testid="stDialog"] h2,
+[data-testid="stDialog"] h3,
+[data-testid="stDialog"] p,
+[data-testid="stDialog"] label,
+[data-testid="stDialog"] span,
+[data-testid="stDialog"] [data-testid="stMarkdownContainer"],
+[data-testid="stDialog"] [data-testid="stMarkdownContainer"] * {
+    color: #ffffff !important;
+}
+
+/* Eingabefelder dunkel */
+[data-testid="stDialog"] input,
+[data-testid="stDialog"] textarea {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+    border: 1px solid #555555 !important;
+}
+
+/* Buttons im Head-to-Head-Fenster */
+[data-testid="stDialog"] .stButton button {
+    background-color: #245234 !important;
+    color: #ffffff !important;
+    border: 1px solid #315d3d !important;
+}
+
+[data-testid="stDialog"] .stButton button:hover {
+    background-color: #347346 !important;
+}
 /* Trennlinien */
 hr {
     border-color: #444444 !important;
