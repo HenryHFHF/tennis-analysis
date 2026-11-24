@@ -80,9 +80,20 @@ div[role="radiogroup"] {
 
 /* Karten und Container */
 [data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #f7faf7;
-    border-color: #cbdacb;
+    background-color: #173d27;
+    border: 1px solid #245234;
     border-radius: 12px;
+    color: white;
+}
+
+/* Alle Texte innerhalb der dunkelgrünen Karten */
+[data-testid="stVerticalBlockBorderWrapper"] p,
+[data-testid="stVerticalBlockBorderWrapper"] span,
+[data-testid="stVerticalBlockBorderWrapper"] label,
+[data-testid="stVerticalBlockBorderWrapper"] h1,
+[data-testid="stVerticalBlockBorderWrapper"] h2,
+[data-testid="stVerticalBlockBorderWrapper"] h3 {
+    color: white !important;
 }
 
 /* Trennlinien */
