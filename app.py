@@ -433,6 +433,131 @@ if "daten" not in st.session_state:
     st.session_state.daten = daten_laden()
 
 daten = st.session_state.daten
+# =================================
+# HEAD-TO-HEAD DIALOG-FENSTER
+# =================================
+
+@st.dialog("🎾 Head-to-Head", width="large")
+def head_to_head_dialog(gegner_name, daten):
+
+    st.subheader(f"Dein Vergleich mit {gegner_name}")
+
+    gegner_matches = [
+        m for m in daten["matches"]
+        if gegner_name.strip().casefold() in [
+            str(m.get("gegner", "")).strip().casefold(),
+            str(m.get("gegner2", "")).strip().casefold()
+        ]
+    ]
+
+    h2h_siege = sum(
+        1 for m in gegner_matches
+        if m.get("ausgang") == "Gewonnen"
+    )
+
+    h2h_niederlagen = sum(
+        1 for m in gegner_matches
+        if m.get("ausgang") == "Verloren"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Matches", len(gegner_matches))
+    col2.metric("🏆 Siege", h2h_siege)
+    col3.metric("Niederlagen", h2h_niederlagen)
+
+    st.divider()
+
+    st.subheader("📋 Bisherige Begegnungen")
+
+    if gegner_matches:
+
+        for m in sorted(
+            gegner_matches,
+            key=lambda x: x.get("datum", ""),
+            reverse=True
+        ):
+
+            symbol = (
+                "🏆"
+                if m.get("ausgang") == "Gewonnen"
+                else "❌"
+            )
+
+            st.markdown(
+                f"**{m.get('datum', '')}** – "
+                f"{symbol} {m.get('ausgang', '')} – "
+                f"{m.get('ergebnis', '')}"
+            )
+
+            st.caption(
+                f"{m.get('art', 'Einzel')} | "
+                f"Turnier: {m.get('turnier', '-')}"
+            )
+
+    else:
+        st.info("Noch keine Begegnungen gefunden.")
+
+    st.divider()
+
+    st.subheader("📝 Meine Notizen zu diesem Gegner")
+
+    notizen = daten.setdefault("gegner_notizen", {})
+
+    notiz_id = gegner_name.strip().casefold()
+
+    gespeicherte_notizen = notizen.get(notiz_id, {})
+
+    spielweise = st.text_area(
+        "Wie spielt der Gegner?",
+        value=gespeicherte_notizen.get("spielweise", ""),
+        key=f"h2h_spielweise_{notiz_id}"
+    )
+
+    staerken = st.text_area(
+        "Stärken des Gegners",
+        value=gespeicherte_notizen.get("staerken", ""),
+        key=f"h2h_staerken_{notiz_id}"
+    )
+
+    schwaechen = st.text_area(
+        "Schwächen des Gegners",
+        value=gespeicherte_notizen.get("schwaechen", ""),
+        key=f"h2h_schwaechen_{notiz_id}"
+    )
+
+    taktik = st.text_area(
+        "Meine Taktik für das nächste Match",
+        value=gespeicherte_notizen.get("taktik", ""),
+        key=f"h2h_taktik_{notiz_id}"
+    )
+
+    if st.button(
+        "💾 Gegnernotizen speichern",
+        key=f"h2h_speichern_{notiz_id}"
+    ):
+
+        daten["gegner_notizen"][notiz_id] = {
+            "spielweise": spielweise,
+            "staerken": staerken,
+            "schwaechen": schwaechen,
+            "taktik": taktik
+        }
+
+        daten_speichern()
+
+        st.success("Gegnernotizen wurden gespeichert!")
+
+        st.rerun()
+
+    if st.button(
+        "✖ Fenster schließen",
+        key=f"h2h_schliessen_{notiz_id}"
+    ):
+
+        st.session_state.pop("h2h_gegner", None)
+
+        st.rerun()
 
 
 # NAVIGATION ALS VIER GROSSE FELDER
@@ -1108,150 +1233,15 @@ elif bereich == "🏆 Turniere & Statistiken":
                                 st.rerun()
 
         # ---------------------------------
-        # HEAD-TO-HEAD
+        # HEAD-TO-HEAD-FENSTER ÖFFNEN
         # ---------------------------------
 
-        ausgewaehlter_gegner = st.session_state.get("h2h_gegner")
+        if st.session_state.get("h2h_gegner"):
 
-        if ausgewaehlter_gegner:
-
-            st.divider()
-
-            st.header(
-                f"🎾 Head-to-Head: {ausgewaehlter_gegner}"
+            head_to_head_dialog(
+                st.session_state["h2h_gegner"],
+                daten
             )
-
-            # Alle Begegnungen mit diesem Gegner finden
-
-            gegner_matches = [
-                m for m in daten["matches"]
-                if ausgewaehlter_gegner.strip().casefold()
-                in [
-                    str(m.get("gegner", "")).strip().casefold(),
-                    str(m.get("gegner2", "")).strip().casefold()
-                ]
-            ]
-
-            # Statistiken berechnen
-
-            h2h_siege = sum(
-                1 for m in gegner_matches
-                if m.get("ausgang") == "Gewonnen"
-            )
-
-            h2h_niederlagen = sum(
-                1 for m in gegner_matches
-                if m.get("ausgang") == "Verloren"
-            )
-
-            h2h_gesamt = len(gegner_matches)
-
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric("Matches", h2h_gesamt)
-            col2.metric("🏆 Siege", h2h_siege)
-            col3.metric("Niederlagen", h2h_niederlagen)
-
-            st.divider()
-
-            # Bisherige Begegnungen
-
-            st.subheader("📋 Bisherige Begegnungen")
-
-            if gegner_matches:
-
-                for m in sorted(
-                    gegner_matches,
-                    key=lambda x: x.get("datum", ""),
-                    reverse=True
-                ):
-
-                    symbol = (
-                        "🏆"
-                        if m.get("ausgang") == "Gewonnen"
-                        else "❌"
-                    )
-
-                    st.markdown(
-                        f"**{m.get('datum', '')}** – "
-                        f"{symbol} {m.get('ausgang', '')} – "
-                        f"{m.get('ergebnis', '')}"
-                    )
-
-                    st.caption(
-                        f"{m.get('art', 'Einzel')} | "
-                        f"Turnier: {m.get('turnier', '-')}"
-                    )
-
-            else:
-
-                st.info("Noch keine Begegnungen gefunden.")
-
-            st.divider()
-
-            # Gegnernotizen
-
-            st.subheader("📝 Meine Notizen zu diesem Gegner")
-
-            notizen = daten.setdefault("gegner_notizen", {})
-
-            notiz_id = ausgewaehlter_gegner.strip().casefold()
-
-            gespeicherte_notizen = notizen.get(notiz_id, {})
-
-            spielweise = st.text_area(
-                "Wie spielt der Gegner?",
-                value=gespeicherte_notizen.get("spielweise", ""),
-                key=f"h2h_spielweise_{notiz_id}"
-            )
-
-            staerken = st.text_area(
-                "Stärken des Gegners",
-                value=gespeicherte_notizen.get("staerken", ""),
-                key=f"h2h_staerken_{notiz_id}"
-            )
-
-            schwaechen = st.text_area(
-                "Schwächen des Gegners",
-                value=gespeicherte_notizen.get("schwaechen", ""),
-                key=f"h2h_schwaechen_{notiz_id}"
-            )
-
-            taktik = st.text_area(
-                "Meine Taktik für das nächste Match",
-                value=gespeicherte_notizen.get("taktik", ""),
-                key=f"h2h_taktik_{notiz_id}"
-            )
-
-            if st.button(
-                "💾 Gegnernotizen speichern",
-                key=f"h2h_speichern_{notiz_id}"
-            ):
-
-                daten["gegner_notizen"][notiz_id] = {
-                    "spielweise": spielweise,
-                    "staerken": staerken,
-                    "schwaechen": schwaechen,
-                    "taktik": taktik
-                }
-
-                daten_speichern()
-
-                st.success("Gegnernotizen wurden gespeichert!")
-
-                st.rerun()
-
-            if st.button("✖ Head-to-Head schließen"):
-
-                st.session_state.pop("h2h_gegner", None)
-
-                st.rerun()
-
-    else:
-        st.info("Noch keine Matches eingetragen.")
-
-    st.divider()
-
     # ---------------------------------
     # TURNIERÜBERSICHT
     # ---------------------------------
