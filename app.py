@@ -25,15 +25,15 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Gesamter Hintergrund */
+/* Gesamter App-Hintergrund */
 .stApp {
-    background-color: #ffffff;
-    color: #17251b;
+    background-color: #000000 !important;
+    color: #f5f5f5 !important;
 }
 
-/* Kopfbereich */
+/* Oberer Streamlit-Bereich */
 [data-testid="stHeader"] {
-    background-color: #ffffff;
+    background-color: #000000 !important;
 }
 
 /* Seitenleiste ausblenden */
@@ -41,29 +41,25 @@ st.markdown("""
     display: none;
 }
 
-/* Überschriften */
-h1, h2, h3 {
-    color: #173d27 !important;
-}
-
-/* Startseiten-Begrüßung */
-div[style*="linear-gradient"] h1,
-div[style*="linear-gradient"] p {
+/* Überschriften und normale Texte */
+h1, h2, h3, h4, h5, h6 {
     color: #ffffff !important;
 }
 
-/* Normale Texte */
-p, label {
-    color: #26382c;
+p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
+[data-testid="stMetricValue"], [data-testid="stCaptionContainer"] {
+    color: #f0f0f0;
 }
 
 /* Eingabefelder */
 .stTextInput input,
 .stTextArea textarea,
-.stDateInput input {
-    background-color: #f5f8f5 !important;
-    color: #17251b !important;
-    border: 1px solid #b8cbbb;
+.stDateInput input,
+.stNumberInput input,
+[data-baseweb="select"] > div {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+    border: 1px solid #555555 !important;
     border-radius: 8px;
 }
 
@@ -87,7 +83,7 @@ p, label {
     background-color: #347346 !important;
 }
 
-/* Dunkler Kopfbereich */
+/* Dunkelgrüner Kopfbereich */
 .st-key-top_header {
     background: linear-gradient(120deg, #12351f, #07110b) !important;
     padding: 20px 26px 16px 26px;
@@ -185,38 +181,39 @@ p, label {
     font-weight: 700;
 }
 
-.st-key-top_header [data-testid="stPopover"] > button * ,
+.st-key-top_header [data-testid="stPopover"] > button *,
 .st-key-top_header .stButton button * {
     color: #173d27 !important;
 }
 
-/* Login-Fenster */
+/* Login-Fenster dunkel gestalten */
 [data-testid="stPopoverBody"] {
-    background-color: #ffffff !important;
+    background-color: #171717 !important;
+    border: 1px solid #555555 !important;
 }
 
 [data-testid="stPopoverBody"] p,
 [data-testid="stPopoverBody"] label,
 [data-testid="stPopoverBody"] span {
-    color: #173d27 !important;
+    color: #ffffff !important;
 }
 
 /* Anmelden-Button im geöffneten Login-Fenster */
 [data-testid="stPopoverBody"] .stButton button,
 [data-testid="stPopoverBody"] .stFormSubmitButton button {
-    background-color: #ffffff !important;
-    color: #173d27 !important;
-    border: 1px solid #245234 !important;
+    background-color: #245234 !important;
+    color: #ffffff !important;
+    border: 1px solid #6b9b75 !important;
 }
 
 [data-testid="stPopoverBody"] .stButton button *,
 [data-testid="stPopoverBody"] .stFormSubmitButton button * {
-    color: #173d27 !important;
+    color: #ffffff !important;
 }
 
 /* Trennlinien */
 hr {
-    border-color: #d5e2d5;
+    border-color: #444444 !important;
 }
 
 </style>
