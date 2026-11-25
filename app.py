@@ -269,6 +269,36 @@ hr {
     border-color: #444444 !important;
 }
 
+
+/* Diagramme: schwarzer Hintergrund und helle Beschriftungen */
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stVegaLiteChart"] > div,
+[data-testid="stArrowVegaLiteChart"] > div {
+    background-color: #000000 !important;
+}
+
+[data-testid="stVegaLiteChart"] svg,
+[data-testid="stArrowVegaLiteChart"] svg,
+[data-testid="stVegaLiteChart"] canvas,
+[data-testid="stArrowVegaLiteChart"] canvas {
+    background-color: #000000 !important;
+}
+
+[data-testid="stVegaLiteChart"] .role-axis text,
+[data-testid="stArrowVegaLiteChart"] .role-axis text,
+[data-testid="stVegaLiteChart"] .role-axis-title,
+[data-testid="stArrowVegaLiteChart"] .role-axis-title {
+    fill: #ffffff !important;
+}
+
+[data-testid="stVegaLiteChart"] .role-axis path,
+[data-testid="stVegaLiteChart"] .role-axis line,
+[data-testid="stArrowVegaLiteChart"] .role-axis path,
+[data-testid="stArrowVegaLiteChart"] .role-axis line {
+    stroke: #777777 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -885,10 +915,13 @@ elif bereich == "📊 Leistungsdashboard":
         )
 
         st.markdown("**Siege und Niederlagen pro Monat**")
-        st.bar_chart(monatsbilanz[["Siege", "Niederlagen"]])
+        st.bar_chart(
+            monatsbilanz[["Siege", "Niederlagen"]],
+            color=["#FFFFFF", "#3B8F5A"]
+        )
 
         st.markdown("**Entwicklung deiner monatlichen Siegquote**")
-        st.line_chart(monatsbilanz[["Siegquote"]])
+        st.line_chart(monatsbilanz[["Siegquote"]], color="#FFFFFF")
 
         # ---------------------------------
         # KARRIEREENTWICKLUNG
@@ -925,7 +958,7 @@ elif bereich == "📊 Leistungsdashboard":
             ["Matchnummer", "Gesamt-Siegquote"]
         ].set_index("Matchnummer")
 
-        st.line_chart(karriere_chart)
+        st.line_chart(karriere_chart, color="#3B8F5A")
 
         letzter_stand = karriere_verlauf.iloc[-1]
         st.caption(
@@ -1270,10 +1303,13 @@ elif bereich == "🏆 Turniere & Statistiken":
         )
 
         st.write("Siege und Niederlagen pro Monat")
-        st.bar_chart(df[["Siege", "Niederlagen"]])
+        st.bar_chart(
+            df[["Siege", "Niederlagen"]],
+            color=["#FFFFFF", "#3B8F5A"]
+        )
 
         st.write("Entwicklung deiner Siegquote")
-        st.line_chart(df["Siegquote"])
+        st.line_chart(df["Siegquote"], color="#FFFFFF")
 
         st.dataframe(df)
 
