@@ -919,6 +919,10 @@ elif bereich == "📊 Leistungsdashboard":
 
     st.divider()
 
+    # Platzhalter: Die Rekorde werden weiter unten berechnet, erscheinen
+    # aber direkt unter "Einzel und Doppel".
+    rekorde_container = st.container()
+
     # ---------------------------------
     # ZEITLICHE ENTWICKLUNG
     # ---------------------------------
@@ -1055,184 +1059,183 @@ elif bereich == "📊 Leistungsdashboard":
         # MEINE REKORDE
         # ---------------------------------
 
-        st.divider()
-        st.subheader("🏆 Meine Rekorde")
-        st.caption(
-            "Deine persönlichen Bestwerte werden automatisch aus deinen "
-            "gespeicherten Matches berechnet."
-        )
-
-        # Längste Sieg- und Niederlagenserien chronologisch berechnen
-        rekord_verlauf = (
-            df_verlauf
-            .sort_values("Datum", kind="stable")
-            .reset_index(drop=True)
-        )
-
-        serien = {
-            "Gewonnen": {"aktuell": 0, "maximum": 0, "start": None,
-                         "ende": None, "best_start": None, "best_ende": None},
-            "Verloren": {"aktuell": 0, "maximum": 0, "start": None,
-                         "ende": None, "best_start": None, "best_ende": None}
-        }
-
-        letzte_serienart = None
-        for _, eintrag in rekord_verlauf.iterrows():
-            ausgang_rekord = eintrag["Ausgang"]
-            datum_rekord = eintrag["Datum"]
-
-            if ausgang_rekord != letzte_serienart:
-                serien[ausgang_rekord]["aktuell"] = 0
-                serien[ausgang_rekord]["start"] = datum_rekord
-
-            serien[ausgang_rekord]["aktuell"] += 1
-            serien[ausgang_rekord]["ende"] = datum_rekord
-
-            if serien[ausgang_rekord]["aktuell"] > serien[ausgang_rekord]["maximum"]:
-                serien[ausgang_rekord]["maximum"] = serien[ausgang_rekord]["aktuell"]
-                serien[ausgang_rekord]["best_start"] = serien[ausgang_rekord]["start"]
-                serien[ausgang_rekord]["best_ende"] = serien[ausgang_rekord]["ende"]
-
-            letzte_serienart = ausgang_rekord
-
-        siege_serien = serien["Gewonnen"]
-        niederlagen_serien = serien["Verloren"]
-
-        # Monatsrekorde: bester Sieg-Niederlagen-Abstand, meiste Siege
-        # und höchste Siegquote. Bei Gleichstand wird der frühere Monat gewählt.
-        monats_rekorde = monatsbilanz.copy()
-        monats_rekorde["Bilanz"] = (
-            monats_rekorde["Siege"] - monats_rekorde["Niederlagen"]
-        )
-
-        bester_bilanz_monat = monats_rekorde.sort_values(
-            ["Bilanz", "Siege", "Matches"],
-            ascending=[False, False, False],
-            kind="stable"
-        ).iloc[0]
-
-        meiste_siege_monat = monats_rekorde.sort_values(
-            ["Siege", "Siegquote", "Matches"],
-            ascending=[False, False, False],
-            kind="stable"
-        ).iloc[0]
-
-        hoechste_quote_monat = monats_rekorde.sort_values(
-            ["Siegquote", "Matches", "Siege"],
-            ascending=[False, False, False],
-            kind="stable"
-        ).iloc[0]
-
-        def monat_anzeigen(monat):
-            return pd.to_datetime(
-                f"{monat}-01",
-                errors="coerce"
-            ).strftime("%m.%Y")
-
-        # Turnierserie: betrachtet nur Matches mit eingetragenem Turniernamen.
-        # Nicht-Turniermatches unterbrechen diese separate Turnierserie nicht.
-        turnier_verlauf = []
-        for match in matches:
-            datum = pd.to_datetime(
-                match.get("datum", ""),
-                errors="coerce"
+        with rekorde_container:
+            st.subheader("🏆 Meine Rekorde")
+            st.caption(
+                "Deine persönlichen Bestwerte werden automatisch aus deinen "
+                "gespeicherten Matches berechnet."
             )
-            turniername = str(match.get("turnier", "")).strip()
-            ausgang_match = match.get("ausgang")
 
-            if (
-                pd.notna(datum)
-                and turniername
-                and turniername.casefold() not in [
-                    "kein turnier", "-", "none", "nan"
-                ]
-                and ausgang_match in ["Gewonnen", "Verloren"]
-            ):
-                turnier_verlauf.append({
-                    "Datum": datum,
-                    "Ausgang": ausgang_match
-                })
+            # Längste Sieg- und Niederlagenserien chronologisch berechnen
+            rekord_verlauf = (
+                df_verlauf
+                .sort_values("Datum", kind="stable")
+                .reset_index(drop=True)
+            )
 
-        turnier_siegserie = 0
-        laengste_turnier_siegserie = 0
-        if turnier_verlauf:
-            turnier_verlauf.sort(key=lambda x: x["Datum"])
-            for turnier_match in turnier_verlauf:
-                if turnier_match["Ausgang"] == "Gewonnen":
-                    turnier_siegserie += 1
-                    laengste_turnier_siegserie = max(
-                        laengste_turnier_siegserie,
-                        turnier_siegserie
+            serien = {
+                "Gewonnen": {"aktuell": 0, "maximum": 0, "start": None,
+                             "ende": None, "best_start": None, "best_ende": None},
+                "Verloren": {"aktuell": 0, "maximum": 0, "start": None,
+                             "ende": None, "best_start": None, "best_ende": None}
+            }
+
+            letzte_serienart = None
+            for _, eintrag in rekord_verlauf.iterrows():
+                ausgang_rekord = eintrag["Ausgang"]
+                datum_rekord = eintrag["Datum"]
+
+                if ausgang_rekord != letzte_serienart:
+                    serien[ausgang_rekord]["aktuell"] = 0
+                    serien[ausgang_rekord]["start"] = datum_rekord
+
+                serien[ausgang_rekord]["aktuell"] += 1
+                serien[ausgang_rekord]["ende"] = datum_rekord
+
+                if serien[ausgang_rekord]["aktuell"] > serien[ausgang_rekord]["maximum"]:
+                    serien[ausgang_rekord]["maximum"] = serien[ausgang_rekord]["aktuell"]
+                    serien[ausgang_rekord]["best_start"] = serien[ausgang_rekord]["start"]
+                    serien[ausgang_rekord]["best_ende"] = serien[ausgang_rekord]["ende"]
+
+                letzte_serienart = ausgang_rekord
+
+            siege_serien = serien["Gewonnen"]
+            niederlagen_serien = serien["Verloren"]
+
+            # Monatsrekorde: bester Sieg-Niederlagen-Abstand, meiste Siege
+            # und höchste Siegquote. Bei Gleichstand wird der frühere Monat gewählt.
+            monats_rekorde = monatsbilanz.copy()
+            monats_rekorde["Bilanz"] = (
+                monats_rekorde["Siege"] - monats_rekorde["Niederlagen"]
+            )
+
+            bester_bilanz_monat = monats_rekorde.sort_values(
+                ["Bilanz", "Siege", "Matches"],
+                ascending=[False, False, False],
+                kind="stable"
+            ).iloc[0]
+
+            meiste_siege_monat = monats_rekorde.sort_values(
+                ["Siege", "Siegquote", "Matches"],
+                ascending=[False, False, False],
+                kind="stable"
+            ).iloc[0]
+
+            hoechste_quote_monat = monats_rekorde.sort_values(
+                ["Siegquote", "Matches", "Siege"],
+                ascending=[False, False, False],
+                kind="stable"
+            ).iloc[0]
+
+            def monat_anzeigen(monat):
+                return pd.to_datetime(
+                    f"{monat}-01",
+                    errors="coerce"
+                ).strftime("%m.%Y")
+
+            # Turnierserie: betrachtet nur Matches mit eingetragenem Turniernamen.
+            # Nicht-Turniermatches unterbrechen diese separate Turnierserie nicht.
+            turnier_verlauf = []
+            for match in matches:
+                datum = pd.to_datetime(
+                    match.get("datum", ""),
+                    errors="coerce"
+                )
+                turniername = str(match.get("turnier", "")).strip()
+                ausgang_match = match.get("ausgang")
+
+                if (
+                    pd.notna(datum)
+                    and turniername
+                    and turniername.casefold() not in [
+                        "kein turnier", "-", "none", "nan"
+                    ]
+                    and ausgang_match in ["Gewonnen", "Verloren"]
+                ):
+                    turnier_verlauf.append({
+                        "Datum": datum,
+                        "Ausgang": ausgang_match
+                    })
+
+            turnier_siegserie = 0
+            laengste_turnier_siegserie = 0
+            if turnier_verlauf:
+                turnier_verlauf.sort(key=lambda x: x["Datum"])
+                for turnier_match in turnier_verlauf:
+                    if turnier_match["Ausgang"] == "Gewonnen":
+                        turnier_siegserie += 1
+                        laengste_turnier_siegserie = max(
+                            laengste_turnier_siegserie,
+                            turnier_siegserie
+                        )
+                    else:
+                        turnier_siegserie = 0
+
+            rekord_col1, rekord_col2, rekord_col3 = st.columns(3)
+
+            with rekord_col1:
+                st.metric(
+                    "🔥 Längste Siegesserie",
+                    f"{siege_serien['maximum']} Matches"
+                )
+                if siege_serien["best_start"] is not None:
+                    st.caption(
+                        f"{siege_serien['best_start'].strftime('%d.%m.%Y')} "
+                        f"bis {siege_serien['best_ende'].strftime('%d.%m.%Y')}"
                     )
-                else:
-                    turnier_siegserie = 0
 
-        rekord_col1, rekord_col2, rekord_col3 = st.columns(3)
+            with rekord_col2:
+                st.metric(
+                    "💪 Längste Niederlagenserie",
+                    f"{niederlagen_serien['maximum']} Matches"
+                )
+                if niederlagen_serien["best_start"] is not None:
+                    st.caption(
+                        f"{niederlagen_serien['best_start'].strftime('%d.%m.%Y')} "
+                        f"bis {niederlagen_serien['best_ende'].strftime('%d.%m.%Y')}"
+                    )
 
-        with rekord_col1:
-            st.metric(
-                "🔥 Längste Siegesserie",
-                f"{siege_serien['maximum']} Matches"
-            )
-            if siege_serien["best_start"] is not None:
+            with rekord_col3:
+                st.metric(
+                    "🏆 Längste Turnier-Siegesserie",
+                    f"{laengste_turnier_siegserie} Matches"
+                )
                 st.caption(
-                    f"{siege_serien['best_start'].strftime('%d.%m.%Y')} "
-                    f"bis {siege_serien['best_ende'].strftime('%d.%m.%Y')}"
+                    "Nur Matches mit eingetragenem Turniernamen; "
+                    "andere Matches werden nicht mitgezählt."
                 )
 
-        with rekord_col2:
-            st.metric(
-                "💪 Längste Niederlagenserie",
-                f"{niederlagen_serien['maximum']} Matches"
-            )
-            if niederlagen_serien["best_start"] is not None:
+            rekord_col4, rekord_col5, rekord_col6 = st.columns(3)
+
+            with rekord_col4:
+                st.metric(
+                    "📈 Erfolgreichster Monat",
+                    monat_anzeigen(bester_bilanz_monat.name),
+                    help="Monat mit dem größten Abstand zwischen Siegen und Niederlagen."
+                )
                 st.caption(
-                    f"{niederlagen_serien['best_start'].strftime('%d.%m.%Y')} "
-                    f"bis {niederlagen_serien['best_ende'].strftime('%d.%m.%Y')}"
+                    f"+{int(bester_bilanz_monat['Bilanz'])} "
+                    f"Bilanz | {int(bester_bilanz_monat['Siege'])} Siege, "
+                    f"{int(bester_bilanz_monat['Niederlagen'])} Niederlagen"
                 )
 
-        with rekord_col3:
-            st.metric(
-                "🏆 Längste Turnier-Siegesserie",
-                f"{laengste_turnier_siegserie} Matches"
-            )
-            st.caption(
-                "Nur Matches mit eingetragenem Turniernamen; "
-                "andere Matches werden nicht mitgezählt."
-            )
+            with rekord_col5:
+                st.metric(
+                    "🎾 Meiste Siege in einem Monat",
+                    f"{int(meiste_siege_monat['Siege'])} Siege"
+                )
+                st.caption(monat_anzeigen(meiste_siege_monat.name))
 
-        rekord_col4, rekord_col5, rekord_col6 = st.columns(3)
-
-        with rekord_col4:
-            st.metric(
-                "📈 Erfolgreichster Monat",
-                monat_anzeigen(bester_bilanz_monat.name),
-                help="Monat mit dem größten Abstand zwischen Siegen und Niederlagen."
-            )
-            st.caption(
-                f"+{int(bester_bilanz_monat['Bilanz'])} "
-                f"Bilanz | {int(bester_bilanz_monat['Siege'])} Siege, "
-                f"{int(bester_bilanz_monat['Niederlagen'])} Niederlagen"
-            )
-
-        with rekord_col5:
-            st.metric(
-                "🎾 Meiste Siege in einem Monat",
-                f"{int(meiste_siege_monat['Siege'])} Siege"
-            )
-            st.caption(monat_anzeigen(meiste_siege_monat.name))
-
-        with rekord_col6:
-            st.metric(
-                "⭐ Höchste monatliche Siegquote",
-                f"{hoechste_quote_monat['Siegquote']:.1f} %"
-            )
-            st.caption(
-                f"{monat_anzeigen(hoechste_quote_monat.name)} | "
-                f"{int(hoechste_quote_monat['Siege'])} Siege aus "
-                f"{int(hoechste_quote_monat['Matches'])} Matches"
-            )
-
+            with rekord_col6:
+                st.metric(
+                    "⭐ Höchste monatliche Siegquote",
+                    f"{hoechste_quote_monat['Siegquote']:.1f} %"
+                )
+                st.caption(
+                    f"{monat_anzeigen(hoechste_quote_monat.name)} | "
+                    f"{int(hoechste_quote_monat['Siege'])} Siege aus "
+                    f"{int(hoechste_quote_monat['Matches'])} Matches"
+                )
     else:
         st.info(
             "Sobald Matches mit gültigem Datum und Ergebnis gespeichert sind, "
