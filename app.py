@@ -890,6 +890,69 @@ elif bereich == "📊 Leistungsdashboard":
         st.markdown("**Entwicklung deiner monatlichen Siegquote**")
         st.line_chart(monatsbilanz[["Siegquote"]])
 
+        # ---------------------------------
+        # KARRIEREENTWICKLUNG
+        # ---------------------------------
+
+        st.markdown("### 🏆 Deine Karriereentwicklung")
+        st.caption(
+            "Die Kurve zeigt deine Gesamt-Siegquote nach jedem gespielten Match. "
+            "Alle gewerteten Matches werden chronologisch berücksichtigt."
+        )
+
+        karriere_verlauf = (
+            df_verlauf
+            .sort_values("Datum", kind="stable")
+            .reset_index(drop=True)
+            .copy()
+        )
+
+        karriere_verlauf["Matchnummer"] = range(
+            1, len(karriere_verlauf) + 1
+        )
+        karriere_verlauf["Siege bis dahin"] = (
+            karriere_verlauf["Ausgang"] == "Gewonnen"
+        ).cumsum()
+        karriere_verlauf["Matches bis dahin"] = (
+            karriere_verlauf["Matchnummer"]
+        )
+        karriere_verlauf["Gesamt-Siegquote"] = (
+            karriere_verlauf["Siege bis dahin"]
+            / karriere_verlauf["Matches bis dahin"] * 100
+        )
+
+        karriere_chart = karriere_verlauf[
+            ["Matchnummer", "Gesamt-Siegquote"]
+        ].set_index("Matchnummer")
+
+        st.line_chart(karriere_chart)
+
+        letzter_stand = karriere_verlauf.iloc[-1]
+        st.caption(
+            f"Nach {int(letzter_stand['Matches bis dahin'])} Matches "
+            f"liegt deine Gesamt-Siegquote bei "
+            f"{letzter_stand['Gesamt-Siegquote']:.1f} %."
+        )
+
+        with st.expander("Karriereverlauf als Tabelle anzeigen"):
+            karriere_tabelle = karriere_verlauf[
+                [
+                    "Matchnummer",
+                    "Datum",
+                    "Ausgang",
+                    "Siege bis dahin",
+                    "Gesamt-Siegquote"
+                ]
+            ].copy()
+            karriere_tabelle["Gesamt-Siegquote"] = (
+                karriere_tabelle["Gesamt-Siegquote"].round(1)
+            )
+            st.dataframe(
+                karriere_tabelle,
+                use_container_width=True,
+                hide_index=True
+            )
+
         with st.expander("Monatliche Zahlen anzeigen"):
             st.dataframe(
                 monatsbilanz,
