@@ -107,10 +107,10 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
     margin: 5px 0 0 0;
 }
 
-/* Vier große Navigationsfelder */
+/* Fünf große Navigationsfelder */
 .st-key-main_navigation [role="radiogroup"] {
     display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px !important;
     width: 100%;
     background: transparent !important;
@@ -619,6 +619,7 @@ with st.container(key="main_navigation"):
         "Navigation",
         [
             "🏠 Startseite",
+            "📊 Leistungsdashboard",
             "🏆 Turniere & Statistiken",
             "📈 Verbesserung & Training",
             "📅 Kalender & Planung"
@@ -756,8 +757,218 @@ if bereich == "🏠 Startseite":
     st.caption("H.F. Tennis Analysis | Dein Tennis. Deine Entwicklung.")
 
 
+
 # =================================
-# 6. TURNIERE UND STATISTIKEN
+# 6. LEISTUNGSDASHBOARD
+# =================================
+
+elif bereich == "📊 Leistungsdashboard":
+
+    st.header("📊 Mein Leistungsdashboard")
+    st.write(
+        "Deine wichtigsten Tennisdaten auf einen Blick – "
+        "automatisch aus deinen gespeicherten Matches berechnet."
+    )
+
+    matches = daten.get("matches", [])
+
+    siege = sum(
+        1 for m in matches
+        if m.get("ausgang") == "Gewonnen"
+    )
+
+    niederlagen = sum(
+        1 for m in matches
+        if m.get("ausgang") == "Verloren"
+    )
+
+    gesamt = len(matches)
+    gewertete_matches = siege + niederlagen
+    quote = (
+        siege / gewertete_matches * 100
+        if gewertete_matches > 0 else 0
+    )
+
+    einzel_matches = sum(
+        1 for m in matches
+        if m.get("art", "Einzel") == "Einzel"
+    )
+
+    doppel_matches = sum(
+        1 for m in matches
+        if m.get("art", "Einzel") == "Doppel"
+    )
+
+    # ---------------------------------
+    # KENNZAHLEN
+    # ---------------------------------
+
+    st.subheader("🎾 Deine Gesamtbilanz")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Matches insgesamt", gesamt)
+    col2.metric("🏆 Siege", siege)
+    col3.metric("❌ Niederlagen", niederlagen)
+    col4.metric("📊 Siegquote", f"{quote:.1f} %")
+
+    st.divider()
+
+    # ---------------------------------
+    # EINZEL UND DOPPEL
+    # ---------------------------------
+
+    st.subheader("🎾 Einzel und Doppel")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("Einzelmatches", einzel_matches)
+
+    with col2:
+        st.metric("Doppelmatches", doppel_matches)
+
+    st.divider()
+
+    # ---------------------------------
+    # ZEITLICHE ENTWICKLUNG
+    # ---------------------------------
+
+    st.subheader("📈 Deine Entwicklung im Zeitverlauf")
+
+    verlaufsdaten = []
+
+    for match in matches:
+        datum = pd.to_datetime(
+            match.get("datum", ""),
+            errors="coerce"
+        )
+
+        ausgang = match.get("ausgang")
+
+        if pd.notna(datum) and ausgang in ["Gewonnen", "Verloren"]:
+            verlaufsdaten.append({
+                "Datum": datum,
+                "Monat": datum.strftime("%Y-%m"),
+                "Ausgang": ausgang
+            })
+
+    if verlaufsdaten:
+
+        df_verlauf = pd.DataFrame(verlaufsdaten)
+
+        monatsbilanz = (
+            df_verlauf
+            .groupby(["Monat", "Ausgang"])
+            .size()
+            .unstack(fill_value=0)
+        )
+
+        for spalte in ["Gewonnen", "Verloren"]:
+            if spalte not in monatsbilanz.columns:
+                monatsbilanz[spalte] = 0
+
+        monatsbilanz = monatsbilanz.rename(columns={
+            "Gewonnen": "Siege",
+            "Verloren": "Niederlagen"
+        })
+
+        monatsbilanz = monatsbilanz.sort_index()
+
+        monatsbilanz["Matches"] = (
+            monatsbilanz["Siege"] + monatsbilanz["Niederlagen"]
+        )
+
+        monatsbilanz["Siegquote"] = (
+            monatsbilanz["Siege"]
+            / monatsbilanz["Matches"] * 100
+        )
+
+        st.markdown("**Siege und Niederlagen pro Monat**")
+        st.bar_chart(monatsbilanz[["Siege", "Niederlagen"]])
+
+        st.markdown("**Entwicklung deiner monatlichen Siegquote**")
+        st.line_chart(monatsbilanz[["Siegquote"]])
+
+        with st.expander("Monatliche Zahlen anzeigen"):
+            st.dataframe(
+                monatsbilanz,
+                use_container_width=True
+            )
+
+    else:
+        st.info(
+            "Sobald Matches mit gültigem Datum und Ergebnis gespeichert sind, "
+            "wird hier deine Entwicklung angezeigt."
+        )
+
+    st.divider()
+
+    # ---------------------------------
+    # LETZTE MATCHES
+    # ---------------------------------
+
+    st.subheader("🕒 Deine letzten Matches")
+
+    matches_mit_datum = []
+
+    for match in matches:
+        datum = pd.to_datetime(
+            match.get("datum", ""),
+            errors="coerce"
+        )
+
+        if pd.notna(datum):
+            matches_mit_datum.append((datum, match))
+
+    matches_mit_datum.sort(
+        key=lambda eintrag: eintrag[0],
+        reverse=True
+    )
+
+    if matches_mit_datum:
+
+        for datum, match in matches_mit_datum[:5]:
+
+            if match.get("ausgang") == "Gewonnen":
+                symbol = "🏆"
+            elif match.get("ausgang") == "Verloren":
+                symbol = "❌"
+            else:
+                symbol = "🎾"
+
+            if match.get("art", "Einzel") == "Doppel":
+                gegner_text = (
+                    f"{match.get('gegner', '')} und "
+                    f"{match.get('gegner2', '')}"
+                )
+            else:
+                gegner_text = match.get("gegner", "Unbekannter Gegner")
+
+            st.markdown(
+                f"**{datum.strftime('%d.%m.%Y')}** – "
+                f"{symbol} gegen {gegner_text} – "
+                f"{match.get('ergebnis', 'Kein Ergebnis')}"
+            )
+
+            st.caption(
+                f"{match.get('art', 'Einzel')} | "
+                f"Turnier: {match.get('turnier', '-')}"
+            )
+
+    else:
+        st.info("Es sind noch keine Matches mit gültigem Datum vorhanden.")
+
+    st.divider()
+
+    st.caption(
+        "Die angezeigten Kennzahlen werden automatisch aus deinen "
+        "gespeicherten Matches berechnet."
+    )
+
+
+# =================================
+# 7. TURNIERE UND STATISTIKEN
 # =================================
 
 elif bereich == "🏆 Turniere & Statistiken":
@@ -1573,7 +1784,7 @@ elif bereich == "🏆 Turniere & Statistiken":
 
 
 # =================================
-# 6. VERBESSERUNG UND TRAINING
+# 8. VERBESSERUNG UND TRAINING
 # =================================
 
 elif bereich == "📈 Verbesserung & Training":
@@ -1883,7 +2094,7 @@ elif bereich == "📈 Verbesserung & Training":
 
 
 # =================================
-# 7. KALENDER UND PLANUNG
+# 9. KALENDER UND PLANUNG
 # =================================
 
 elif bereich == "📅 Kalender & Planung":
@@ -2118,7 +2329,7 @@ elif bereich == "📅 Kalender & Planung":
 
 
 # =================================
-# 8. SIDEBAR
+# 10. SIDEBAR
 # =================================
 
 st.sidebar.divider()
