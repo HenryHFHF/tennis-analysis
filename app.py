@@ -1533,6 +1533,225 @@ else:
         "gespeicherten Matches berechnet."
     )
 
+    # =================================
+    # SAISON- UND TURNIERVERGLEICH
+    # =================================
+
+    st.divider()
+    st.subheader("📅 Saisonvergleich")
+
+    import re
+    import unicodedata
+    from difflib import SequenceMatcher
+
+    matches_df = pd.DataFrame(daten.get("matches", []))
+
+    if not matches_df.empty and "datum" in matches_df.columns:
+
+        matches_df["datum"] = pd.to_datetime(
+            matches_df["datum"],
+            errors="coerce"
+        )
+
+        matches_df = matches_df.dropna(subset=["datum"])
+        matches_df["jahr"] = matches_df["datum"].dt.year
+
+        jahre = sorted(
+            matches_df["jahr"].unique().tolist(),
+            reverse=True
+        )
+
+        if len(jahre) >= 2:
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                jahr1 = st.selectbox(
+                    "Erste Saison",
+                    jahre,
+                    index=1
+                )
+
+            with col2:
+                jahr2 = st.selectbox(
+                    "Zweite Saison",
+                    jahre,
+                    index=0
+                )
+
+            def saison_statistik(df, art=None):
+                if art:
+                    df = df[df["art"].fillna("Einzel") == art]
+
+                spiele = len(df)
+                siege = (df["ausgang"] == "Gewonnen").sum()
+                niederlagen = (df["ausgang"] == "Verloren").sum()
+                quote = siege / spiele * 100 if spiele else 0
+
+                return spiele, siege, niederlagen, quote
+
+            def zeige_vergleich(titel, art=None):
+                st.markdown(f"### {titel}")
+
+                df1 = matches_df[matches_df["jahr"] == jahr1].copy()
+                df2 = matches_df[matches_df["jahr"] == jahr2].copy()
+
+                if art:
+                    df1 = df1[df1["art"].fillna("Einzel") == art]
+                    df2 = df2[df2["art"].fillna("Einzel") == art]
+
+                s1 = saison_statistik(df1)
+                s2 = saison_statistik(df2)
+
+                spalten = st.columns(2)
+
+                with spalten[0]:
+                    st.markdown(f"**{jahr1}**")
+                    st.metric("Matches", s1[0])
+                    st.metric("Siege", s1[1])
+                    st.metric("Niederlagen", s1[2])
+                    st.metric("Siegquote", f"{s1[3]:.1f} %")
+
+                with spalten[1]:
+                    st.markdown(f"**{jahr2}**")
+                    st.metric("Matches", s2[0])
+                    st.metric("Siege", s2[1])
+                    st.metric("Niederlagen", s2[2])
+                    st.metric("Siegquote", f"{s2[3]:.1f} %")
+
+            zeige_vergleich("🎾 Gesamtvergleich")
+            zeige_vergleich("👤 Einzel", "Einzel")
+            zeige_vergleich("👥 Doppel", "Doppel")
+
+            st.divider()
+            st.markdown("### 🏆 Turniervergleich")
+
+            def normalisiere_turnier(name):
+                name = str(name).lower().strip()
+                name = unicodedata.normalize("NFKD", name)
+                name = "".join(
+                    c for c in name
+                    if not unicodedata.combining(c)
+                )
+                name = re.sub(r"\b20\d{2}\b", "", name)
+                name = re.sub(r"[^a-z0-9]", "", name)
+                return name
+
+            def turnier_daten(df):
+                if "turnier" not in df.columns:
+                    return {}
+
+                ergebnis = {}
+
+                for _, match in df.iterrows():
+                    name = str(match.get("turnier", "")).strip()
+
+                    if not name or name == "-":
+                        continue
+
+                    key = normalisiere_turnier(name)
+
+                    if key not in ergebnis:
+                        ergebnis[key] = {
+                            "name": name,
+                            "matches": 0,
+                            "siege": 0,
+                            "niederlagen": 0
+                        }
+
+                    ergebnis[key]["matches"] += 1
+
+                    if match.get("ausgang") == "Gewonnen":
+                        ergebnis[key]["siege"] += 1
+                    elif match.get("ausgang") == "Verloren":
+                        ergebnis[key]["niederlagen"] += 1
+
+                return ergebnis
+
+            turniere1 = turnier_daten(
+                matches_df[matches_df["jahr"] == jahr1]
+            )
+
+            turniere2 = turnier_daten(
+                matches_df[matches_df["jahr"] == jahr2]
+            )
+
+            gemeinsame = set(turniere1) & set(turniere2)
+            neue = set(turniere2) - set(turniere1)
+            fehlende = set(turniere1) - set(turniere2)
+
+            st.markdown(f"**Turniere in beiden Jahren: {len(gemeinsame)}**")
+
+            for key in sorted(gemeinsame):
+                t1 = turniere1[key]
+                t2 = turniere2[key]
+
+                with st.expander(t2["name"]):
+                    st.write(
+                        f"{jahr1}: {t1['matches']} Matches, "
+                        f"{t1['siege']} Siege, "
+                        f"{t1['niederlagen']} Niederlagen"
+                    )
+                    st.write(
+                        f"{jahr2}: {t2['matches']} Matches, "
+                        f"{t2['siege']} Siege, "
+                        f"{t2['niederlagen']} Niederlagen"
+                    )
+
+            st.markdown(f"**🆕 Neue Turniere {jahr2}: {len(neue)}**")
+
+            for key in sorted(neue):
+                st.write(f"• {turniere2[key]['name']}")
+
+            st.markdown(f"**Nicht mehr dabei {jahr2}: {len(fehlende)}**")
+
+            for key in sorted(fehlende):
+                st.write(f"• {turniere1[key]['name']}")
+
+            st.divider()
+            st.markdown("### 🔎 Mögliche Namensübereinstimmungen")
+
+            vorschlaege = []
+
+            for key1 in fehlende:
+                for key2 in neue:
+                    a = turniere1[key1]["name"]
+                    b = turniere2[key2]["name"]
+
+                    a_norm = normalisiere_turnier(a)
+                    b_norm = normalisiere_turnier(b)
+
+                    aehnlichkeit = SequenceMatcher(
+                        None,
+                        a_norm,
+                        b_norm
+                    ).ratio()
+
+                    if aehnlichkeit >= 0.75:
+                        vorschlaege.append((a, b, aehnlichkeit))
+
+            if vorschlaege:
+                for a, b, wert in vorschlaege:
+                    st.info(
+                        f"Ähnliche Namen: **{a}** und **{b}** "
+                        f"({wert * 100:.0f} % Übereinstimmung). "
+                        "Bitte manuell prüfen."
+                    )
+            else:
+                st.caption("Keine ähnlichen Turniernamen gefunden.")
+
+        else:
+            st.info("Für einen Saisonvergleich werden mindestens zwei Jahre benötigt.")
+
+    else:
+        st.info("Es sind noch keine Matches mit gültigem Datum vorhanden.")
+
+# =================================
+# 7. TURNIERE UND STATISTIKEN
+# =================================
+
+elif bereich == "🏆 Turniere & Statistiken":
+
 
 # =================================
 # 7. TURNIERE UND STATISTIKEN
