@@ -63,12 +63,12 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
     border-radius: 8px;
 }
 
-/* Allgemeine Buttons */
+/* Allgemeine Buttons: schwarz/dunkelgrau */
 .stButton button,
 .stFormSubmitButton button {
-    background-color: #245234 !important;
+    background-color: #171717 !important;
     color: #ffffff !important;
-    border: 1px solid #245234;
+    border: 1px solid #555555 !important;
     border-radius: 9px;
     font-weight: bold;
 }
@@ -80,7 +80,7 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
 
 .stButton button:hover,
 .stFormSubmitButton button:hover {
-    background-color: #347346 !important;
+    background-color: #292929 !important;
 }
 
 /* Dunkelgrüner Kopfbereich */
@@ -171,19 +171,21 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
     color: #ffffff !important;
 }
 
-/* Login-Button im Kopfbereich */
-.st-key-top_header [data-testid="stPopover"] > button,
-.st-key-top_header .stButton button {
-    background-color: #f3f7f3 !important;
-    color: #173d27 !important;
-    border: 1px solid #d5e5d8 !important;
+/* Login-Button im Kopfbereich: dunkelgrün */
+.st-key-top_header [data-testid="stPopover"] > button {
+    background-color: #245234 !important;
+    color: #ffffff !important;
+    border: 1px solid #3b6b49 !important;
     border-radius: 10px;
     font-weight: 700;
 }
 
-.st-key-top_header [data-testid="stPopover"] > button *,
-.st-key-top_header .stButton button * {
-    color: #173d27 !important;
+.st-key-top_header [data-testid="stPopover"] > button * {
+    color: #ffffff !important;
+}
+
+.st-key-top_header [data-testid="stPopover"] > button:hover {
+    background-color: #347346 !important;
 }
 
 /* Login-Fenster dunkel gestalten */
@@ -198,12 +200,12 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
     color: #ffffff !important;
 }
 
-/* Anmelden-Button im geöffneten Login-Fenster */
+/* Anmelden-Button im geöffneten Login-Fenster: dunkel */
 [data-testid="stPopoverBody"] .stButton button,
 [data-testid="stPopoverBody"] .stFormSubmitButton button {
-    background-color: #245234 !important;
+    background-color: #171717 !important;
     color: #ffffff !important;
-    border: 1px solid #6b9b75 !important;
+    border: 1px solid #555555 !important;
 }
 
 [data-testid="stPopoverBody"] .stButton button *,
@@ -262,7 +264,7 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
 }
 
 [data-testid="stDialog"] .stButton button:hover {
-    background-color: #347346 !important;
+    background-color: #292929 !important;
 }
 /* Trennlinien */
 hr {
@@ -298,6 +300,63 @@ hr {
 [data-testid="stArrowVegaLiteChart"] .role-axis line {
     stroke: #777777 !important;
 }
+
+
+/* =================================
+   WEISSE EINGABEN UND MELDEFELDER SCHWARZ
+   ================================= */
+
+/* Datumsfelder: auch den inneren Streamlit-/BaseWeb-Bereich färben */
+[data-testid="stDateInput"] input,
+[data-testid="stDateInput"] > div,
+[data-testid="stDateInput"] [data-baseweb="input"],
+[data-testid="stDateInput"] [data-baseweb="input"] > div {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+    border-color: #555555 !important;
+}
+
+/* Auswahlfelder (z. B. Training, Match-Art, Turnier, Ergebnis) */
+[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+[data-testid="stSelectbox"] [data-baseweb="select"] > div > div,
+[data-testid="stSelectbox"] [role="combobox"],
+[data-baseweb="popover"] [role="listbox"],
+[data-baseweb="popover"] [role="option"] {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+    border-color: #555555 !important;
+}
+
+[data-testid="stSelectbox"] svg,
+[data-testid="stDateInput"] svg {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+}
+
+/* Helle Info-/Hinweisboxen (z. B. „Keine anstehenden Termine“) */
+[data-testid="stAlert"],
+[data-testid="stAlert"] > div,
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"] {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+    border: 1px solid #3b6b49 !important;
+    border-radius: 10px !important;
+}
+
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] span,
+[data-testid="stAlert"] svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* Auch Popover- und Dropdown-Flächen dunkel halten */
+[data-baseweb="popover"] > div,
+[data-baseweb="menu"] {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+}
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -917,7 +976,7 @@ elif bereich == "📊 Leistungsdashboard":
         st.markdown("**Siege und Niederlagen pro Monat**")
         st.bar_chart(
             monatsbilanz[["Siege", "Niederlagen"]],
-            color=["#FFFFFF", "#3B8F5A"]
+            color=["#2E8B57", "#DC3545"]
         )
 
         st.markdown("**Entwicklung deiner monatlichen Siegquote**")
@@ -1305,7 +1364,7 @@ elif bereich == "🏆 Turniere & Statistiken":
         st.write("Siege und Niederlagen pro Monat")
         st.bar_chart(
             df[["Siege", "Niederlagen"]],
-            color=["#FFFFFF", "#3B8F5A"]
+            color=["#2E8B57", "#DC3545"]
         )
 
         st.write("Entwicklung deiner Siegquote")
