@@ -1746,16 +1746,9 @@ else:
     else:
         st.info("Es sind noch keine Matches mit gültigem Datum vorhanden.")
 
-# =================================
-# 7. TURNIERE UND STATISTIKEN
-# =================================
-
-elif bereich == "🏆 Turniere & Statistiken":
-
-
-# =================================
-# 7. TURNIERE UND STATISTIKEN
-# =================================
+    # =================================
+    # 7. TURNIERE UND STATISTIKEN
+    # =================================
 
 elif bereich == "🏆 Turniere & Statistiken":
 
