@@ -5,7 +5,9 @@ import uuid
 import base64
 from pathlib import Path
 from datetime import date
-
+import re
+import unicodedata
+from difflib import SequenceMatcher
 
 # =================================
 # 1. GRUNDEINSTELLUNGEN
@@ -1243,6 +1245,231 @@ elif bereich == "📊 Leistungsdashboard":
         )
 
     st.divider()
+
+# =================================
+# SAISON- UND TURNIERVERGLEICH
+# =================================
+
+st.markdown("---")
+st.subheader("📅 Saisonvergleich")
+
+matches_df = pd.DataFrame(daten.get("matches", []))
+
+if not matches_df.empty and "datum" in matches_df.columns:
+
+    matches_df["datum_dt"] = pd.to_datetime(
+        matches_df["datum"], errors="coerce"
+    )
+    matches_df = matches_df.dropna(subset=["datum_dt"])
+    matches_df["jahr"] = matches_df["datum_dt"].dt.year
+
+    jahre = sorted(matches_df["jahr"].unique().tolist(), reverse=True)
+
+    if len(jahre) >= 2:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            jahr_a = st.selectbox(
+                "Erste Saison", jahre,
+                index=1, key="vergleich_jahr_a"
+            )
+
+        with col2:
+            jahr_b = st.selectbox(
+                "Zweite Saison", jahre,
+                index=0, key="vergleich_jahr_b"
+            )
+
+        saison_a = matches_df[matches_df["jahr"] == jahr_a]
+        saison_b = matches_df[matches_df["jahr"] == jahr_b]
+
+        def saison_statistik(df):
+            siege = (
+                df["ausgang"].astype(str).str.lower() == "gewonnen"
+            ).sum()
+            niederlagen = (
+                df["ausgang"].astype(str).str.lower() == "verloren"
+            ).sum()
+            entscheidungen = siege + niederlagen
+            quote = siege / entscheidungen * 100 if entscheidungen else 0
+
+            return {
+                "Matches": len(df),
+                "Siege": int(siege),
+                "Niederlagen": int(niederlagen),
+                "Siegquote": f"{quote:.1f} %"
+            }
+
+        st.markdown("### Gesamtvergleich")
+
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    saison_statistik(saison_a),
+                    saison_statistik(saison_b)
+                ],
+                index=[str(jahr_a), str(jahr_b)]
+            ),
+            use_container_width=True
+        )
+
+        st.markdown("### Einzel und Doppel")
+
+        for art in ["Einzel", "Doppel"]:
+            st.markdown(f"**{art}**")
+
+            a = saison_statistik(
+                saison_a[saison_a["art"].astype(str).str.lower() == art.lower()]
+            )
+            b = saison_statistik(
+                saison_b[saison_b["art"].astype(str).str.lower() == art.lower()]
+            )
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+                st.caption(str(jahr_a))
+                st.write(f"Matches: {a['Matches']}")
+                st.write(f"Siege: {a['Siege']}")
+                st.write(f"Niederlagen: {a['Niederlagen']}")
+                st.write(f"Siegquote: {a['Siegquote']}")
+
+            with c2:
+                st.caption(str(jahr_b))
+                st.write(f"Matches: {b['Matches']}")
+                st.write(f"Siege: {b['Siege']}")
+                st.write(f"Niederlagen: {b['Niederlagen']}")
+                st.write(f"Siegquote: {b['Siegquote']}")
+
+        # Turniervergleich
+
+        st.markdown("---")
+        st.markdown("### 🏆 Turniervergleich")
+
+        def turniername_bereinigen(name):
+            name = str(name).strip().lower()
+            name = unicodedata.normalize("NFKD", name)
+            name = "".join(
+                c for c in name
+                if not unicodedata.combining(c)
+            )
+            name = re.sub(r"20\d{2}", "", name)
+            return re.sub(r"[^a-z0-9]", "", name)
+
+        def turnierdaten(df):
+            if "turnier" not in df.columns:
+                return pd.DataFrame()
+
+            temp = df.copy()
+            temp["turnier"] = temp["turnier"].fillna("").astype(str).str.strip()
+
+            temp = temp[
+                (temp["turnier"] != "")
+                & (~temp["turnier"].str.lower().isin(
+                    ["kein turnier", "-", "none", "nan"]
+                ))
+            ]
+
+            if temp.empty:
+                return pd.DataFrame()
+
+            temp["turnier_key"] = temp["turnier"].apply(
+                turniername_bereinigen
+            )
+            temp = temp[temp["turnier_key"] != ""]
+
+            return temp.groupby("turnier_key").agg(
+                Turnier=("turnier", "first"),
+                Teilnahmen=("turnier", "count"),
+                Siege=("ausgang", lambda x: (
+                    x.astype(str).str.lower() == "gewonnen"
+                ).sum()),
+                Niederlagen=("ausgang", lambda x: (
+                    x.astype(str).str.lower() == "verloren"
+                ).sum())
+            ).reset_index()
+
+        turniere_a = turnierdaten(saison_a)
+        turniere_b = turnierdaten(saison_b)
+
+        keys_a = set(turniere_a["turnier_key"])
+        keys_b = set(turniere_b["turnier_key"])
+
+        gemeinsam = keys_a & keys_b
+        neu = keys_b - keys_a
+        weggefallen = keys_a - keys_b
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("In beiden Jahren", len(gemeinsam))
+        c2.metric(f"Neu in {jahr_b}", len(neu))
+        c3.metric(f"Nur in {jahr_a}", len(weggefallen))
+
+        if gemeinsam:
+            st.markdown("#### Turniere in beiden Jahren")
+
+            for key in sorted(gemeinsam):
+                a = turniere_a[turniere_a["turnier_key"] == key].iloc[0]
+                b = turniere_b[turniere_b["turnier_key"] == key].iloc[0]
+
+                with st.container(border=True):
+                    st.write(f"🏆 **{a['Turnier']}**")
+
+                    c1, c2 = st.columns(2)
+
+                    with c1:
+                        st.caption(str(jahr_a))
+                        st.write(f"Teilnahmen: {a['Teilnahmen']}")
+                        st.write(f"Siege: {a['Siege']}")
+                        st.write(f"Niederlagen: {a['Niederlagen']}")
+
+                    with c2:
+                        st.caption(str(jahr_b))
+                        st.write(f"Teilnahmen: {b['Teilnahmen']}")
+                        st.write(f"Siege: {b['Siege']}")
+                        st.write(f"Niederlagen: {b['Niederlagen']}")
+
+        if neu:
+            st.markdown(f"#### Neue Turniere in {jahr_b}")
+            for key in sorted(neu):
+                name = turniere_b[
+                    turniere_b["turnier_key"] == key
+                ].iloc[0]["Turnier"]
+                st.write(f"🟢 {name}")
+
+        if weggefallen:
+            st.markdown(f"#### Turniere aus {jahr_a}, die in {jahr_b} fehlen")
+            for key in sorted(weggefallen):
+                name = turniere_a[
+                    turniere_a["turnier_key"] == key
+                ].iloc[0]["Turnier"]
+                st.write(f"⚪ {name}")
+
+        # Ähnliche Namen als mögliche Übereinstimmungen anzeigen
+
+        namen_a = {
+            row["turnier_key"]: row["Turnier"]
+            for _, row in turniere_a.iterrows()
+        }
+        namen_b = {
+            row["turnier_key"]: row["Turnier"]
+            for _, row in turniere_b.iterrows()
+        }
+
+        for key_a in keys_a - keys_b:
+            for key_b in keys_b - keys_a:
+                if SequenceMatcher(None, key_a, key_b).ratio() >= 0.80:
+                    st.info(
+                        f"Mögliche Übereinstimmung: "
+                        f"„{namen_a[key_a]}“ und „{namen_b[key_b]}“. "
+                        "Bitte prüfen."
+                    )
+
+    else:
+        st.info("Für den Vergleich werden mindestens zwei Spieljahre benötigt.")
+
+else:
+    st.info("Noch keine auswertbaren Matchdaten vorhanden.")
 
     # ---------------------------------
     # LETZTE MATCHES
