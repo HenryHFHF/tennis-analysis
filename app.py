@@ -379,7 +379,243 @@ def supabase_verbindung(access_token=None):
         client.postgrest.auth(access_token)
 
     return client
+    
+# =================================
+# SPIELERPROFILE – DATENBANK
+# =================================
 
+def spielerprofil_laden(user_id):
+    try:
+        token = st.session_state.get("supabase_token")
+        client = supabase_verbindung(token)
+
+        response = (
+            client.table("player_profiles")
+            .select("*")
+            .eq("user_id", str(user_id))
+            .maybe_single()
+            .execute()
+        )
+
+        return response.data
+
+    except Exception as e:
+        st.error(f"Fehler beim Laden des Spielerprofils: {e}")
+        return None
+
+
+def spielerprofil_speichern(profil):
+    try:
+        token = st.session_state.get("supabase_token")
+        client = supabase_verbindung(token)
+
+        response = (
+            client.table("player_profiles")
+            .upsert(profil)
+            .execute()
+        )
+
+        return True
+
+    except Exception as e:
+        st.error(f"Fehler beim Speichern des Spielerprofils: {e}")
+        return False
+# =================================
+# MEIN SPIELERPROFIL
+# =================================
+
+def mein_spielerprofil(user):
+    st.title("👤 Mein Spielerprofil")
+    st.caption("Hier kannst du deine persönlichen Spielerdaten verwalten.")
+
+    profil = spielerprofil_laden(user.id)
+
+    if profil is None:
+        profil = {}
+
+    with st.form("spielerprofil_formular"):
+
+        st.subheader("Persönliche Daten")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            vorname = st.text_input(
+                "Vorname",
+                value=profil.get("first_name") or ""
+            )
+
+            nachname = st.text_input(
+                "Nachname",
+                value=profil.get("last_name") or ""
+            )
+
+            geburtsjahr = st.text_input(
+                "Geburtsjahr",
+                value=str(profil.get("birth_year") or "")
+            )
+
+            geschlecht_optionen = [
+                "",
+                "Männlich",
+                "Weiblich",
+                "Divers",
+                "Keine Angabe"
+            ]
+
+            geschlecht_alt = profil.get("gender") or ""
+
+            geschlecht = st.selectbox(
+                "Geschlecht",
+                geschlecht_optionen,
+                index=(
+                    geschlecht_optionen.index(geschlecht_alt)
+                    if geschlecht_alt in geschlecht_optionen
+                    else 0
+                )
+            )
+
+        with col2:
+            verein = st.text_input(
+                "Verein",
+                value=profil.get("club") or ""
+            )
+
+            verband = st.text_input(
+                "Landesverband",
+                value=profil.get("regional_association") or ""
+            )
+
+            altersklasse = st.text_input(
+                "Altersklasse",
+                value=profil.get("age_group") or ""
+            )
+
+        st.divider()
+        st.subheader("Tennis-Daten")
+
+        col3, col4 = st.columns(2)
+
+        with col3:
+            aktuelle_lk = st.text_input(
+                "Aktuelle LK",
+                value=profil.get("current_lk") or ""
+            )
+
+            hoechste_lk = st.text_input(
+                "Beste LK",
+                value=profil.get("highest_lk") or ""
+            )
+
+            spielhand_optionen = ["", "Rechts", "Links"]
+
+            spielhand_alt = profil.get("playing_hand") or ""
+
+            spielhand = st.selectbox(
+                "Spielhand",
+                spielhand_optionen,
+                index=(
+                    spielhand_optionen.index(spielhand_alt)
+                    if spielhand_alt in spielhand_optionen
+                    else 0
+                )
+            )
+
+        with col4:
+            rueckhand_optionen = [
+                "",
+                "Einhändig",
+                "Beidhändig"
+            ]
+
+            rueckhand_alt = profil.get("backhand") or ""
+
+            rueckhand = st.selectbox(
+                "Rückhand",
+                rueckhand_optionen,
+                index=(
+                    rueckhand_optionen.index(rueckhand_alt)
+                    if rueckhand_alt in rueckhand_optionen
+                    else 0
+                )
+            )
+
+            lieblingsspieler = st.text_input(
+                "Lieblingsspieler",
+                value=profil.get("favorite_player") or ""
+            )
+
+        st.divider()
+        st.subheader("Über mich")
+
+        profilbild = st.text_input(
+            "Link zu deinem Profilbild",
+            value=profil.get("avatar_url") or ""
+        )
+
+        ueber_mich = st.text_area(
+            "Kurze Beschreibung",
+            value=profil.get("about_me") or "",
+            placeholder="Schreibe etwas über dich und dein Tennis ..."
+        )
+
+        st.divider()
+        st.subheader("Privatsphäre")
+
+        profil_oeffentlich = st.checkbox(
+            "Mein Profil für andere Spieler sichtbar machen",
+            value=bool(profil.get("is_public", False))
+        )
+
+        statistiken_oeffentlich = st.checkbox(
+            "Meine Statistiken für andere Spieler freigeben",
+            value=bool(profil.get("stats_public", False))
+        )
+
+        gespeichert = st.form_submit_button(
+            "💾 Profil speichern",
+            use_container_width=True
+        )
+
+    if gespeichert:
+
+        if geburtsjahr.strip():
+            if not geburtsjahr.strip().isdigit():
+                st.error("Bitte gib ein gültiges Geburtsjahr ein.")
+                return
+
+            if len(geburtsjahr.strip()) != 4:
+                st.error("Das Geburtsjahr muss vierstellig sein.")
+                return
+
+            geburtsjahr_wert = int(geburtsjahr.strip())
+
+        else:
+            geburtsjahr_wert = None
+
+        neue_daten = {
+            "user_id": str(user.id),
+            "first_name": vorname.strip(),
+            "last_name": nachname.strip(),
+            "birth_year": geburtsjahr_wert,
+            "gender": geschlecht,
+            "club": verein.strip(),
+            "regional_association": verband.strip(),
+            "age_group": altersklasse.strip(),
+            "current_lk": aktuelle_lk.strip(),
+            "highest_lk": hoechste_lk.strip(),
+            "playing_hand": spielhand,
+            "backhand": rueckhand,
+            "favorite_player": lieblingsspieler.strip(),
+            "avatar_url": profilbild.strip(),
+            "about_me": ueber_mich.strip(),
+            "is_public": profil_oeffentlich,
+            "stats_public": statistiken_oeffentlich
+        }
+
+        if spielerprofil_speichern(neue_daten):
+            st.success("Dein Spielerprofil wurde gespeichert!")
+            st.rerun()
 
 # =================================
 # 2. DATEN LADEN UND SPEICHERN
@@ -577,6 +813,7 @@ if "daten" not in st.session_state:
     st.session_state.daten = daten_laden()
 
 daten = st.session_state.daten
+
 # =================================
 # HEAD-TO-HEAD DIALOG-FENSTER
 # =================================
@@ -704,22 +941,40 @@ def head_to_head_dialog(gegner_name, daten):
         st.rerun()
 
 
-# NAVIGATION ALS VIER GROSSE FELDER
+# =================================
+# NAVIGATION
+# =================================
+
+navigationspunkte = [
+    "🏠 Startseite",
+    "📊 Leistungsdashboard",
+    "🏆 Turniere & Statistiken",
+    "📈 Verbesserung & Training",
+    "📅 Kalender & Planung"
+]
+
+aktueller_user = st.session_state.get("supabase_user")
+
+if aktueller_user:
+    navigationspunkte.extend([
+        "👤 Mein Spielerprofil",
+        "🔎 Spielersuche"
+    ])
+
+if (
+    not aktueller_user
+    and st.session_state.get("bereich_nav") not in navigationspunkte
+):
+    st.session_state["bereich_nav"] = "🏠 Startseite"
+
 with st.container(key="main_navigation"):
     bereich = st.radio(
         "Navigation",
-        [
-            "🏠 Startseite",
-            "📊 Leistungsdashboard",
-            "🏆 Turniere & Statistiken",
-            "📈 Verbesserung & Training",
-            "📅 Kalender & Planung"
-        ],
+        navigationspunkte,
         horizontal=True,
         label_visibility="collapsed",
         key="bereich_nav"
     )
-
 
 # =================================
 # 5. STARTSEITE
@@ -2896,6 +3151,112 @@ elif bereich == "📅 Kalender & Planung":
     else:
         st.info("Noch keine Termine eingetragen.")
 
+# =================================
+# 11. MEIN SPIELERPROFIL
+# =================================
+
+elif bereich == "👤 Mein Spielerprofil":
+
+    aktueller_user = st.session_state.get("supabase_user")
+
+    if aktueller_user:
+        mein_spielerprofil(aktueller_user)
+    else:
+        st.warning("Bitte melde dich zuerst an.")
+
+
+# =================================
+# 12. SPIELERSUCHE
+# =================================
+
+elif bereich == "🔎 Spielersuche":
+
+    st.header("🔎 Spielersuche")
+    st.caption("Finde andere Spieler mit einem öffentlichen Profil.")
+
+    aktueller_user = st.session_state.get("supabase_user")
+
+    if not aktueller_user:
+
+        st.warning("Bitte melde dich zuerst an.")
+
+    else:
+
+        suchbegriff = st.text_input(
+            "Spieler suchen",
+            placeholder="Vorname oder Nachname eingeben ..."
+        )
+
+        try:
+
+            token = st.session_state.get("supabase_token")
+            client = supabase_verbindung(token)
+
+            response = (
+                client.table("player_profiles")
+                .select(
+                    "user_id,first_name,last_name,club,"
+                    "age_group,current_lk,playing_hand,about_me"
+                )
+                .eq("is_public", True)
+                .execute()
+            )
+
+            spieler = response.data or []
+
+            if suchbegriff.strip():
+
+                suchtext = suchbegriff.strip().casefold()
+
+                spieler = [
+                    p for p in spieler
+                    if suchtext in (
+                        str(p.get("first_name", "")) + " " +
+                        str(p.get("last_name", ""))
+                    ).casefold()
+                ]
+
+            if spieler:
+
+                st.write(f"**{len(spieler)} Spieler gefunden**")
+
+                for p in spieler:
+
+                    vorname = p.get("first_name") or ""
+                    nachname = p.get("last_name") or ""
+
+                    with st.container(border=True):
+
+                        st.subheader(
+                            f"🎾 {vorname} {nachname}"
+                        )
+
+                        if p.get("club"):
+                            st.write("**Verein:**", p["club"])
+
+                        if p.get("age_group"):
+                            st.write("**Altersklasse:**", p["age_group"])
+
+                        if p.get("current_lk"):
+                            st.write("**Aktuelle LK:**", p["current_lk"])
+
+                        if p.get("playing_hand"):
+                            st.write("**Spielhand:**", p["playing_hand"])
+
+                        if p.get("about_me"):
+                            st.write(p["about_me"])
+
+            else:
+
+                st.info(
+                    "Keine öffentlichen Spielerprofile gefunden."
+                )
+
+        except Exception as e:
+
+            st.error(
+                f"Die Spielersuche konnte nicht geladen werden: {e}"
+            )
 
 # =================================
 # 10. SIDEBAR
