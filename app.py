@@ -173,12 +173,12 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
     color: #ffffff !important;
 }
 
-/* Login-Button im Kopfbereich: dunkelgrün */
+/* Login-Button im Kopfbereich wie alle anderen Buttons */
 .st-key-top_header [data-testid="stPopover"] > button {
-    background-color: #245234 !important;
+    background-color: #171717 !important;
     color: #ffffff !important;
-    border: 1px solid #3b6b49 !important;
-    border-radius: 10px;
+    border: 1px solid #555555 !important;
+    border-radius: 9px;
     font-weight: 700;
 }
 
@@ -187,7 +187,7 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
 }
 
 .st-key-top_header [data-testid="stPopover"] > button:hover {
-    background-color: #347346 !important;
+    background-color: #292929 !important;
 }
 
 /* Login-Fenster dunkel gestalten */
@@ -421,138 +421,269 @@ def spielerprofil_speichern(profil):
         st.error(f"Fehler beim Speichern des Spielerprofils: {e}")
         return False
 # =================================
-# MEIN SPIELERPROFIL
+# PROFILBILDER UND ADMIN-ERKENNUNG
 # =================================
+
+AVATAR_BUCKET = "player-avatars"
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+AVATAR_MIME_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp"
+}
+
+
+def ist_app_admin(user_id=None):
+    """Admin-Erkennung über Streamlit Secrets, nicht über sichtbare UI."""
+    if user_id is None:
+        user = st.session_state.get("supabase_user")
+        user_id = getattr(user, "id", None)
+
+    try:
+        admin_id = str(st.secrets.get("admin_user_id", "")).strip()
+    except Exception:
+        admin_id = ""
+
+    return bool(admin_id and user_id and str(user_id) == admin_id)
+
+
+def avatar_signierte_url(user_id, avatar_path):
+    """Erzeugt für einen privaten Storage-Pfad eine zeitlich begrenzte URL."""
+    if not avatar_path:
+        return None
+
+    # Alte, bereits gespeicherte externe Bildlinks bleiben vorübergehend nutzbar.
+    if str(avatar_path).startswith(("https://", "http://")):
+        return str(avatar_path)
+
+    # Ein Profil darf nur auf den eigenen Ordner zeigen; Admin darf fremde Profile.
+    erwarteter_prefix = f"{user_id}/"
+    if not str(avatar_path).startswith(erwarteter_prefix) and not ist_app_admin():
+        return None
+
+    try:
+        client = supabase_verbindung(st.session_state.get("supabase_token"))
+        antwort = client.storage.from_(AVATAR_BUCKET).create_signed_url(
+            str(avatar_path), 3600
+        )
+        daten = getattr(antwort, "data", None) or antwort
+
+        if isinstance(daten, dict):
+            return (
+                daten.get("signedURL")
+                or daten.get("signedUrl")
+                or daten.get("signed_url")
+            )
+
+        return None
+    except Exception:
+        return None
+
+
+def avatar_hochladen(ziel_user_id, uploaded_file, bisheriger_pfad=None):
+    if uploaded_file is None:
+        st.warning("Bitte wähle zuerst ein Bild aus.")
+        return False
+
+    mime = getattr(uploaded_file, "type", "")
+    if mime not in AVATAR_MIME_TYPES:
+        st.error("Erlaubt sind JPG-, PNG- und WEBP-Bilder.")
+        return False
+
+    bild_bytes = uploaded_file.getvalue()
+    if len(bild_bytes) > AVATAR_MAX_BYTES:
+        st.error("Das Bild darf höchstens 5 MB groß sein.")
+        return False
+
+    if not ist_app_admin() and str(ziel_user_id) != str(
+        st.session_state.supabase_user.id
+    ):
+        st.error("Du darfst nur dein eigenes Profilbild ändern.")
+        return False
+
+    neuer_pfad = f"{ziel_user_id}/avatar.{AVATAR_MIME_TYPES[mime]}"
+
+    try:
+        client = supabase_verbindung(st.session_state.get("supabase_token"))
+        client.storage.from_(AVATAR_BUCKET).upload(
+            neuer_pfad,
+            bild_bytes,
+            {
+                "content-type": mime,
+                "cache-control": "3600",
+                "upsert": "true"
+            }
+        )
+
+        gespeichert = spielerprofil_speichern({
+            "user_id": str(ziel_user_id),
+            "avatar_url": neuer_pfad
+        })
+
+        if not gespeichert:
+            try:
+                client.storage.from_(AVATAR_BUCKET).remove([neuer_pfad])
+            except Exception:
+                pass
+            return False
+
+        if bisheriger_pfad and bisheriger_pfad != neuer_pfad and not str(
+            bisheriger_pfad
+        ).startswith(("http://", "https://")):
+            try:
+                client.storage.from_(AVATAR_BUCKET).remove([bisheriger_pfad])
+            except Exception:
+                pass
+
+        return True
+
+    except Exception as e:
+        st.error(f"Das Profilbild konnte nicht hochgeladen werden: {e}")
+        return False
+
+
+def avatar_loeschen(ziel_user_id, bisheriger_pfad=None):
+    if not ist_app_admin() and str(ziel_user_id) != str(
+        st.session_state.supabase_user.id
+    ):
+        st.error("Du darfst nur dein eigenes Profilbild löschen.")
+        return False
+
+    try:
+        client = supabase_verbindung(st.session_state.get("supabase_token"))
+
+        if bisheriger_pfad and not str(bisheriger_pfad).startswith(
+            ("http://", "https://")
+        ):
+            client.storage.from_(AVATAR_BUCKET).remove([bisheriger_pfad])
+
+        return spielerprofil_speichern({
+            "user_id": str(ziel_user_id),
+            "avatar_url": None
+        })
+
+    except Exception as e:
+        st.error(f"Das Profilbild konnte nicht gelöscht werden: {e}")
+        return False
+
+
+def avatar_verwaltung_feld(ziel_user_id, profil, prefix, ueberschrift):
+    st.markdown(f"#### {ueberschrift}")
+
+    bisheriger_pfad = profil.get("avatar_url")
+    bild_url = avatar_signierte_url(ziel_user_id, bisheriger_pfad)
+
+    if bild_url:
+        st.image(bild_url, width=140)
+    else:
+        st.caption("Aktuell ist kein Profilbild gespeichert.")
+
+    upload = st.file_uploader(
+        "Bild vom Gerät auswählen",
+        type=["jpg", "jpeg", "png", "webp"],
+        accept_multiple_files=False,
+        key=f"{prefix}_avatar_upload_{ziel_user_id}"
+    )
+
+    col_upload, col_delete = st.columns(2)
+
+    with col_upload:
+        if st.button(
+            "📷 Bild hochladen / ändern",
+            key=f"{prefix}_avatar_save_{ziel_user_id}",
+            use_container_width=True
+        ):
+            if avatar_hochladen(ziel_user_id, upload, bisheriger_pfad):
+                st.success("Profilbild wurde gespeichert.")
+                st.rerun()
+
+    with col_delete:
+        if st.button(
+            "🗑️ Bild löschen",
+            key=f"{prefix}_avatar_delete_{ziel_user_id}",
+            use_container_width=True,
+            disabled=not bool(bisheriger_pfad)
+        ):
+            if avatar_loeschen(ziel_user_id, bisheriger_pfad):
+                st.success("Profilbild wurde gelöscht.")
+                st.rerun()
+
 
 def mein_spielerprofil(user):
     st.title("👤 Mein Spielerprofil")
     st.caption("Hier kannst du deine persönlichen Spielerdaten verwalten.")
 
-    profil = spielerprofil_laden(user.id)
+    profil = spielerprofil_laden(user.id) or {}
 
-    if profil is None:
-        profil = {}
+    # Profilbild außerhalb des Formulars, damit Upload und Löschen direkt funktionieren.
+    st.subheader("📷 Mein Profilbild")
+    avatar_verwaltung_feld(
+        str(user.id), profil, "eigenes", "Profilbild hochladen oder ändern"
+    )
+    st.divider()
 
     with st.form("spielerprofil_formular"):
 
         st.subheader("Persönliche Daten")
-
         col1, col2 = st.columns(2)
 
         with col1:
-            vorname = st.text_input(
-                "Vorname",
-                value=profil.get("first_name") or ""
-            )
-
-            nachname = st.text_input(
-                "Nachname",
-                value=profil.get("last_name") or ""
-            )
-
+            vorname = st.text_input("Vorname", value=profil.get("first_name") or "")
+            nachname = st.text_input("Nachname", value=profil.get("last_name") or "")
             geburtsjahr = st.text_input(
-                "Geburtsjahr",
-                value=str(profil.get("birth_year") or "")
+                "Geburtsjahr", value=str(profil.get("birth_year") or "")
             )
 
-            geschlecht_optionen = [
-                "",
-                "Männlich",
-                "Weiblich",
-                "Divers",
-                "Keine Angabe"
-            ]
-
+            geschlecht_optionen = ["", "Männlich", "Weiblich", "Divers", "Keine Angabe"]
             geschlecht_alt = profil.get("gender") or ""
-
             geschlecht = st.selectbox(
-                "Geschlecht",
-                geschlecht_optionen,
-                index=(
-                    geschlecht_optionen.index(geschlecht_alt)
-                    if geschlecht_alt in geschlecht_optionen
-                    else 0
-                )
+                "Geschlecht", geschlecht_optionen,
+                index=(geschlecht_optionen.index(geschlecht_alt)
+                       if geschlecht_alt in geschlecht_optionen else 0)
             )
 
         with col2:
-            verein = st.text_input(
-                "Verein",
-                value=profil.get("club") or ""
-            )
-
+            verein = st.text_input("Verein", value=profil.get("club") or "")
             verband = st.text_input(
-                "Landesverband",
-                value=profil.get("regional_association") or ""
+                "Landesverband", value=profil.get("regional_association") or ""
             )
-
             altersklasse = st.text_input(
-                "Altersklasse",
-                value=profil.get("age_group") or ""
+                "Altersklasse", value=profil.get("age_group") or ""
             )
 
         st.divider()
         st.subheader("Tennis-Daten")
-
         col3, col4 = st.columns(2)
 
         with col3:
             aktuelle_lk = st.text_input(
-                "Aktuelle LK",
-                value=profil.get("current_lk") or ""
+                "Aktuelle LK", value=profil.get("current_lk") or ""
             )
-
             hoechste_lk = st.text_input(
-                "Beste LK",
-                value=profil.get("highest_lk") or ""
+                "Beste LK", value=profil.get("highest_lk") or ""
             )
-
             spielhand_optionen = ["", "Rechts", "Links"]
-
             spielhand_alt = profil.get("playing_hand") or ""
-
             spielhand = st.selectbox(
-                "Spielhand",
-                spielhand_optionen,
-                index=(
-                    spielhand_optionen.index(spielhand_alt)
-                    if spielhand_alt in spielhand_optionen
-                    else 0
-                )
+                "Spielhand", spielhand_optionen,
+                index=(spielhand_optionen.index(spielhand_alt)
+                       if spielhand_alt in spielhand_optionen else 0)
             )
 
         with col4:
-            rueckhand_optionen = [
-                "",
-                "Einhändig",
-                "Beidhändig"
-            ]
-
+            rueckhand_optionen = ["", "Einhändig", "Beidhändig"]
             rueckhand_alt = profil.get("backhand") or ""
-
             rueckhand = st.selectbox(
-                "Rückhand",
-                rueckhand_optionen,
-                index=(
-                    rueckhand_optionen.index(rueckhand_alt)
-                    if rueckhand_alt in rueckhand_optionen
-                    else 0
-                )
+                "Rückhand", rueckhand_optionen,
+                index=(rueckhand_optionen.index(rueckhand_alt)
+                       if rueckhand_alt in rueckhand_optionen else 0)
             )
-
             lieblingsspieler = st.text_input(
-                "Lieblingsspieler",
-                value=profil.get("favorite_player") or ""
+                "Lieblingsspieler", value=profil.get("favorite_player") or ""
             )
 
         st.divider()
         st.subheader("Über mich")
-
-        profilbild = st.text_input(
-            "Link zu deinem Profilbild",
-            value=profil.get("avatar_url") or ""
-        )
-
         ueber_mich = st.text_area(
             "Kurze Beschreibung",
             value=profil.get("about_me") or "",
@@ -561,35 +692,25 @@ def mein_spielerprofil(user):
 
         st.divider()
         st.subheader("Privatsphäre")
-
         profil_oeffentlich = st.checkbox(
             "Mein Profil für andere Spieler sichtbar machen",
             value=bool(profil.get("is_public", False))
         )
-
         statistiken_oeffentlich = st.checkbox(
             "Meine Statistiken für andere Spieler freigeben",
             value=bool(profil.get("stats_public", False))
         )
 
         gespeichert = st.form_submit_button(
-            "💾 Profil speichern",
-            use_container_width=True
+            "💾 Profil speichern", use_container_width=True
         )
 
     if gespeichert:
-
         if geburtsjahr.strip():
-            if not geburtsjahr.strip().isdigit():
-                st.error("Bitte gib ein gültiges Geburtsjahr ein.")
+            if not geburtsjahr.strip().isdigit() or len(geburtsjahr.strip()) != 4:
+                st.error("Bitte gib ein gültiges, vierstelliges Geburtsjahr ein.")
                 return
-
-            if len(geburtsjahr.strip()) != 4:
-                st.error("Das Geburtsjahr muss vierstellig sein.")
-                return
-
             geburtsjahr_wert = int(geburtsjahr.strip())
-
         else:
             geburtsjahr_wert = None
 
@@ -607,7 +728,7 @@ def mein_spielerprofil(user):
             "playing_hand": spielhand,
             "backhand": rueckhand,
             "favorite_player": lieblingsspieler.strip(),
-            "avatar_url": profilbild.strip(),
+            "avatar_url": profil.get("avatar_url"),
             "about_me": ueber_mich.strip(),
             "is_public": profil_oeffentlich,
             "stats_public": statistiken_oeffentlich
@@ -616,6 +737,48 @@ def mein_spielerprofil(user):
         if spielerprofil_speichern(neue_daten):
             st.success("Dein Spielerprofil wurde gespeichert!")
             st.rerun()
+
+    # Dieser Bereich wird ausschließlich für das hinterlegte Admin-Konto angezeigt.
+    if ist_app_admin(user.id):
+        st.divider()
+        st.subheader("Spielerprofilbilder verwalten")
+        st.caption("Hier kannst du Profilbilder anderer Spieler ändern oder entfernen.")
+
+        try:
+            client = supabase_verbindung(st.session_state.get("supabase_token"))
+            antwort = (
+                client.table("player_profiles")
+                .select("user_id,first_name,last_name,avatar_url")
+                .execute()
+            )
+            alle_profile = antwort.data or []
+            alle_profile = [p for p in alle_profile if p.get("user_id")]
+
+            if alle_profile:
+                profil_namen = {
+                    str(p["user_id"]): (
+                        f"{p.get('first_name') or ''} {p.get('last_name') or ''}".strip()
+                        or str(p["user_id"])
+                    )
+                    for p in alle_profile
+                }
+                ziel_id = st.selectbox(
+                    "Spieler auswählen",
+                    options=[str(p["user_id"]) for p in alle_profile],
+                    format_func=lambda uid: profil_namen.get(uid, uid),
+                    key="admin_avatar_ziel"
+                )
+                ziel_profil = next(
+                    p for p in alle_profile if str(p["user_id"]) == ziel_id
+                )
+                avatar_verwaltung_feld(
+                    ziel_id, ziel_profil, "admin", "Profilbild des ausgewählten Spielers"
+                )
+            else:
+                st.info("Es wurden noch keine Spielerprofile gefunden.")
+
+        except Exception as e:
+            st.error(f"Die Spielerliste konnte nicht geladen werden: {e}")
 
 # =================================
 # 2. DATEN LADEN UND SPEICHERN
@@ -740,35 +903,72 @@ if "supabase_user" not in st.session_state:
 
 
 # PROFILBILD IM KOPFBEREICH
-profilbild = "logo.png"
+aktueller_user = st.session_state.get("supabase_user")
+profilbild_url = None
 
-if st.session_state.supabase_user is not None:
-
-    profil = spielerprofil_laden(
-        st.session_state.supabase_user.id
+if aktueller_user is not None:
+    header_profil = spielerprofil_laden(aktueller_user.id) or {}
+    profilbild_url = avatar_signierte_url(
+        str(aktueller_user.id), header_profil.get("avatar_url")
     )
 
-    if profil and profil.get("avatar_url"):
-        profilbild = profil["avatar_url"]
+# Dynamisches Styling für den anklickbaren, runden Avatar.
+if profilbild_url:
+    avatar_hintergrund = f'background-image: url("{profilbild_url}") !important;'
+else:
+    avatar_hintergrund = ""
 
+st.markdown(
+    f"""
+    <style>
+    .st-key-open_profile_avatar button {{
+        width: 85px !important;
+        min-width: 85px !important;
+        height: 85px !important;
+        min-height: 85px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        border: 3px solid #2E8B57 !important;
+        background-color: #173d27 !important;
+        background-position: center !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        {avatar_hintergrund}
+    }}
+    .st-key-open_profile_avatar button p {{
+        visibility: hidden !important;
+        margin: 0 !important;
+    }}
+    .st-key-open_profile_avatar button:hover {{
+        border-color: #b5d4bb !important;
+        background-color: #245234 !important;
+    }}
+    .st-key-top_header [data-testid="stImage"] img {{
+        border-radius: 50%;
+        width: 85px;
+        height: 85px;
+        object-fit: cover;
+        border: 3px solid #2E8B57;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # OBERER KOPFBEREICH
 with st.container(key="top_header"):
-
-    col_brand, col_login = st.columns(
-        [6, 1],
-        vertical_alignment="center"
-    )
+    col_brand, col_login = st.columns([6, 1], vertical_alignment="center")
 
     with col_brand:
-
-        col_bild, col_titel = st.columns(
-            [1, 6],
-            vertical_alignment="center"
-        )
+        col_bild, col_titel = st.columns([1, 6], vertical_alignment="center")
 
         with col_bild:
-            st.image(profilbild, width=85)
+            if aktueller_user is not None:
+                if st.button(" ", key="open_profile_avatar", help="Mein Spielerprofil"):
+                    st.session_state["profil_seite_aktiv"] = True
+                    st.rerun()
+            else:
+                st.image("logo.png", width=85)
 
         with col_titel:
             st.markdown(
@@ -778,76 +978,39 @@ with st.container(key="top_header"):
             )
 
     with col_login:
-
-        if st.session_state.supabase_user is None:
-
+        if aktueller_user is None:
             with st.popover("🔐 Login", type="secondary"):
-
-                email = st.text_input(
-                    "E-Mail",
-                    key="login_email"
-                )
-
+                email = st.text_input("E-Mail", key="login_email")
                 passwort = st.text_input(
-                    "Passwort",
-                    type="password",
-                    key="login_passwort"
+                    "Passwort", type="password", key="login_passwort"
                 )
 
                 if st.button("Anmelden"):
-
                     try:
                         client = supabase_verbindung()
-
                         antwort = client.auth.sign_in_with_password({
                             "email": email,
                             "password": passwort
                         })
-
                         st.session_state.supabase_user = antwort.user
                         st.session_state.supabase_token = antwort.session.access_token
-
                         st.session_state.pop("daten", None)
-
+                        st.session_state["profil_seite_aktiv"] = False
                         st.success("Erfolgreich angemeldet!")
                         st.rerun()
-
                     except Exception:
-                        st.error(
-                            "Anmeldung fehlgeschlagen. Bitte Daten prüfen."
-                        )
-
+                        st.error("Anmeldung fehlgeschlagen. Bitte Daten prüfen.")
         else:
-
             st.markdown(
                 "<p class='logged-in-label'>Angemeldet</p>",
                 unsafe_allow_html=True
             )
-
             if st.button("Abmelden", type="secondary"):
-
                 st.session_state.supabase_user = None
                 st.session_state.supabase_token = None
                 st.session_state.pop("daten", None)
-
+                st.session_state["profil_seite_aktiv"] = False
                 st.rerun()
-
-
-# RUNDE DARSTELLUNG DES PROFILBILDS
-st.markdown(
-    """
-    <style>
-    .st-key-top_header [data-testid="stImage"] img {
-        border-radius: 50%;
-        width: 85px;
-        height: 85px;
-        object-fit: cover;
-        border: 3px solid #2E8B57;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 
 # DATEN LADEN
@@ -999,25 +1162,33 @@ navigationspunkte = [
 aktueller_user = st.session_state.get("supabase_user")
 
 if aktueller_user:
-    navigationspunkte.extend([
-        "👤 Mein Spielerprofil",
-        "🔎 Spielersuche"
-    ])
+    navigationspunkte.append("🔎 Spielersuche")
+else:
+    st.session_state["profil_seite_aktiv"] = False
 
-if (
-    not aktueller_user
-    and st.session_state.get("bereich_nav") not in navigationspunkte
-):
+if st.session_state.get("bereich_nav") not in navigationspunkte:
     st.session_state["bereich_nav"] = "🏠 Startseite"
 
+
+def navigation_geaendert():
+    st.session_state["profil_seite_aktiv"] = False
+
 with st.container(key="main_navigation"):
-    bereich = st.radio(
+    ausgewaehlter_bereich = st.radio(
         "Navigation",
         navigationspunkte,
         horizontal=True,
         label_visibility="collapsed",
-        key="bereich_nav"
+        key="bereich_nav",
+        on_change=navigation_geaendert
     )
+
+# Die Profilseite ist intern erreichbar, erscheint aber nicht als Navigationsfeld.
+bereich = (
+    "👤 Mein Spielerprofil"
+    if st.session_state.get("profil_seite_aktiv", False)
+    else ausgewaehlter_bereich
+)
 
 # =================================
 # 5. STARTSEITE
