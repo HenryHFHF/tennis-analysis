@@ -729,6 +729,7 @@ def bearbeitungsschutz(key):
 
 
 
+
 # =================================
 # 4. TITEL UND NAVIGATION
 # =================================
@@ -738,16 +739,36 @@ if "supabase_user" not in st.session_state:
     st.session_state.supabase_user = None
 
 
+# PROFILBILD IM KOPFBEREICH
+profilbild = "logo.png"
+
+if st.session_state.supabase_user is not None:
+
+    profil = spielerprofil_laden(
+        st.session_state.supabase_user.id
+    )
+
+    if profil and profil.get("avatar_url"):
+        profilbild = profil["avatar_url"]
+
+
 # OBERER KOPFBEREICH
 with st.container(key="top_header"):
 
-    col_brand, col_login = st.columns([6, 1])
+    col_brand, col_login = st.columns(
+        [6, 1],
+        vertical_alignment="center"
+    )
 
     with col_brand:
-        col_logo, col_titel = st.columns([1, 6], vertical_alignment="center")
 
-        with col_logo:
-            st.image("logo.png", width=85)
+        col_bild, col_titel = st.columns(
+            [1, 6],
+            vertical_alignment="center"
+        )
+
+        with col_bild:
+            st.image(profilbild, width=85)
 
         with col_titel:
             st.markdown(
@@ -757,9 +778,10 @@ with st.container(key="top_header"):
             )
 
     with col_login:
+
         if st.session_state.supabase_user is None:
 
-            with st.popover("🔐 Login"):
+            with st.popover("🔐 Login", type="secondary"):
 
                 email = st.text_input(
                     "E-Mail",
@@ -796,16 +818,36 @@ with st.container(key="top_header"):
                         )
 
         else:
+
             st.markdown(
                 "<p class='logged-in-label'>Angemeldet</p>",
                 unsafe_allow_html=True
             )
 
-            if st.button("Abmelden"):
+            if st.button("Abmelden", type="secondary"):
+
                 st.session_state.supabase_user = None
                 st.session_state.supabase_token = None
                 st.session_state.pop("daten", None)
+
                 st.rerun()
+
+
+# RUNDE DARSTELLUNG DES PROFILBILDS
+st.markdown(
+    """
+    <style>
+    .st-key-top_header [data-testid="stImage"] img {
+        border-radius: 50%;
+        width: 85px;
+        height: 85px;
+        object-fit: cover;
+        border: 3px solid #2E8B57;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # DATEN LADEN
@@ -813,6 +855,7 @@ if "daten" not in st.session_state:
     st.session_state.daten = daten_laden()
 
 daten = st.session_state.daten
+
 
 # =================================
 # HEAD-TO-HEAD DIALOG-FENSTER
