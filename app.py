@@ -375,8 +375,15 @@ def supabase_verbindung(access_token=None):
 
     client = create_client(url, key)
 
-    if access_token:
-        client.postgrest.auth(access_token)
+    # Authentifizierte Sitzung für Datenbank UND Storage setzen.
+    token = access_token or st.session_state.get("supabase_token")
+    refresh_token = st.session_state.get("supabase_refresh_token")
+
+    if token and refresh_token:
+        client.auth.set_session(token, refresh_token)
+    elif token:
+        # Fallback für reine PostgREST-Abfragen, falls kein Refresh-Token vorliegt.
+        client.postgrest.auth(token)
 
     return client
     
@@ -480,7 +487,79 @@ def avatar_signierte_url(user_id, avatar_path):
         return None
 
 
-st.error(f"Das Profilbild konnte nicht hochgeladen werden: {e}")
+def avatar_hochladen(ziel_user_id, upload, bisheriger_pfad=None):
+    """Lädt ein Profilbild in den privaten Supabase-Storage hoch."""
+    aktueller_user = st.session_state.get("supabase_user")
+
+    if aktueller_user is None:
+        st.error("Bitte melde dich zuerst an.")
+        return False
+
+    if not ist_app_admin() and str(ziel_user_id) != str(aktueller_user.id):
+        st.error("Du darfst nur dein eigenes Profilbild ändern.")
+        return False
+
+    if upload is None:
+        st.warning("Bitte wähle zuerst ein Bild aus.")
+        return False
+
+    datei_bytes = upload.getvalue()
+    if not datei_bytes:
+        st.error("Die ausgewählte Datei ist leer.")
+        return False
+
+    if len(datei_bytes) > AVATAR_MAX_BYTES:
+        st.error("Das Bild darf höchstens 5 MB groß sein.")
+        return False
+
+    mime_type = getattr(upload, "type", None)
+    if mime_type not in AVATAR_MIME_TYPES:
+        st.error("Bitte verwende ein JPG-, PNG- oder WEBP-Bild.")
+        return False
+
+    dateiendung = AVATAR_MIME_TYPES[mime_type]
+    neuer_pfad = f"{str(ziel_user_id)}/avatar.{dateiendung}"
+
+    try:
+        client = supabase_verbindung(st.session_state.get("supabase_token"))
+
+        client.storage.from_(AVATAR_BUCKET).upload(
+            neuer_pfad,
+            datei_bytes,
+            file_options={
+                "content-type": mime_type,
+                "upsert": "true"
+            }
+        )
+
+        if not spielerprofil_speichern({
+            "user_id": str(ziel_user_id),
+            "avatar_url": neuer_pfad
+        }):
+            # Datenbankeintrag konnte nicht gespeichert werden.
+            try:
+                client.storage.from_(AVATAR_BUCKET).remove([neuer_pfad])
+            except Exception:
+                pass
+            return False
+
+        if (
+            bisheriger_pfad
+            and not str(bisheriger_pfad).startswith(("http://", "https://"))
+            and bisheriger_pfad != neuer_pfad
+        ):
+            try:
+                client.storage.from_(AVATAR_BUCKET).remove([bisheriger_pfad])
+            except Exception:
+                # Das neue Bild ist bereits gespeichert; ein altes Bild darf
+                # bei einem Löschfehler zunächst im Storage verbleiben.
+                pass
+
+        return True
+
+    except Exception as e:
+        st.error(f"Das Profilbild konnte nicht hochgeladen werden: {e}")
+        return False
 
 
 def avatar_loeschen(ziel_user_id, bisheriger_pfad=None):
@@ -935,6 +1014,7 @@ with st.container(key="top_header"):
                         })
                         st.session_state.supabase_user = antwort.user
                         st.session_state.supabase_token = antwort.session.access_token
+                        st.session_state.supabase_refresh_token = antwort.session.refresh_token
                         st.session_state.pop("daten", None)
                         st.session_state["profil_seite_aktiv"] = False
                         st.success("Erfolgreich angemeldet!")
@@ -949,6 +1029,7 @@ with st.container(key="top_header"):
             if st.button("Abmelden", type="secondary"):
                 st.session_state.supabase_user = None
                 st.session_state.supabase_token = None
+                st.session_state.supabase_refresh_token = None
                 st.session_state.pop("daten", None)
                 st.session_state["profil_seite_aktiv"] = False
                 st.rerun()
