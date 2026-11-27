@@ -376,7 +376,7 @@ def supabase_verbindung(access_token=None):
     client = create_client(url, key)
 
     if access_token:
-        client.postgrest.auth(access_token)
+        client = client.with_token(access_token)
 
     return client
     
