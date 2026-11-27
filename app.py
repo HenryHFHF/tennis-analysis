@@ -1000,27 +1000,107 @@ with st.container(key="top_header"):
     with col_login:
         if aktueller_user is None:
             with st.popover("🔐 Login", type="secondary"):
-                email = st.text_input("E-Mail", key="login_email")
-                passwort = st.text_input(
-                    "Passwort", type="password", key="login_passwort"
+                tab_login, tab_registrieren = st.tabs(
+                    ["Anmelden", "Registrieren"]
                 )
 
-                if st.button("Anmelden"):
-                    try:
-                        client = supabase_verbindung()
-                        antwort = client.auth.sign_in_with_password({
-                            "email": email,
-                            "password": passwort
-                        })
-                        st.session_state.supabase_user = antwort.user
-                        st.session_state.supabase_token = antwort.session.access_token
-                        st.session_state.supabase_refresh_token = antwort.session.refresh_token
-                        st.session_state.pop("daten", None)
-                        st.session_state["profil_seite_aktiv"] = False
-                        st.success("Erfolgreich angemeldet!")
-                        st.rerun()
-                    except Exception:
-                        st.error("Anmeldung fehlgeschlagen. Bitte Daten prüfen.")
+                with tab_login:
+                    with st.form("login_form"):
+                        email = st.text_input("E-Mail", key="login_email")
+                        passwort = st.text_input(
+                            "Passwort",
+                            type="password",
+                            key="login_passwort"
+                        )
+                        login_absenden = st.form_submit_button(
+                            "Anmelden",
+                            use_container_width=True
+                        )
+
+                    if login_absenden:
+                        try:
+                            client = supabase_verbindung()
+                            antwort = client.auth.sign_in_with_password({
+                                "email": email.strip(),
+                                "password": passwort
+                            })
+
+                            st.session_state.supabase_user = antwort.user
+                            st.session_state.supabase_token = antwort.session.access_token
+                            st.session_state.supabase_refresh_token = antwort.session.refresh_token
+                            st.session_state.pop("daten", None)
+                            st.session_state["profil_seite_aktiv"] = False
+                            st.success("Erfolgreich angemeldet!")
+                            st.rerun()
+                        except Exception:
+                            st.error(
+                                "Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort prüfen."
+                            )
+
+                with tab_registrieren:
+                    st.caption(
+                        "Erstelle ein eigenes Konto, um deine persönlichen "
+                        "Tennisdaten zu speichern."
+                    )
+
+                    with st.form("registrierung_form"):
+                        registrierung_email = st.text_input(
+                            "E-Mail-Adresse",
+                            key="registrierung_email"
+                        )
+                        registrierung_passwort = st.text_input(
+                            "Passwort (mindestens 6 Zeichen)",
+                            type="password",
+                            key="registrierung_passwort"
+                        )
+                        passwort_wiederholen = st.text_input(
+                            "Passwort wiederholen",
+                            type="password",
+                            key="registrierung_passwort_wiederholen"
+                        )
+                        registrierung_absenden = st.form_submit_button(
+                            "Konto erstellen",
+                            use_container_width=True
+                        )
+
+                    if registrierung_absenden:
+                        if not registrierung_email.strip():
+                            st.error("Bitte gib eine E-Mail-Adresse ein.")
+                        elif len(registrierung_passwort) < 6:
+                            st.error("Das Passwort muss mindestens 6 Zeichen haben.")
+                        elif registrierung_passwort != passwort_wiederholen:
+                            st.error("Die beiden Passwörter stimmen nicht überein.")
+                        else:
+                            try:
+                                client = supabase_verbindung()
+                                antwort = client.auth.sign_up({
+                                    "email": registrierung_email.strip(),
+                                    "password": registrierung_passwort
+                                })
+
+                                neue_session = getattr(antwort, "session", None)
+                                neuer_user = getattr(antwort, "user", None)
+
+                                if neue_session and neuer_user:
+                                    st.session_state.supabase_user = neuer_user
+                                    st.session_state.supabase_token = neue_session.access_token
+                                    st.session_state.supabase_refresh_token = neue_session.refresh_token
+                                    st.session_state.pop("daten", None)
+                                    st.session_state["profil_seite_aktiv"] = False
+                                    st.success("Dein Konto wurde erstellt und du bist angemeldet!")
+                                    st.rerun()
+                                else:
+                                    st.success(
+                                        "Dein Konto wurde angelegt. Bitte bestätige "
+                                        "deine E-Mail-Adresse über den Link in deinem "
+                                        "Postfach. Danach kannst du dich hier anmelden."
+                                    )
+                            except Exception as e:
+                                st.error(
+                                    "Die Registrierung hat nicht geklappt. "
+                                    "Prüfe bitte die E-Mail-Adresse oder versuche "
+                                    "es später erneut."
+                                )
         else:
             st.markdown(
                 "<p class='logged-in-label'>Angemeldet</p>",
