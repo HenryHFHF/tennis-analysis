@@ -174,21 +174,7 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
 }
 
 /* Login-Button im Kopfbereich wie alle anderen Buttons */
-.st-key-top_header [data-testid="stPopover"] button {
-    background-color: #171717 !important;
-    color: #ffffff !important;
-    border: 1px solid #555555 !important;
-    border-radius: 9px !important;
-    font-weight: 700 !important;
-}
-
-.st-key-top_header [data-testid="stPopover"] button * {
-    color: #ffffff !important;
-}
-
-.st-key-top_header [data-testid="stPopover"] button:hover {
-    background-color: #292929 !important;
-}
+.st-key-top_header [data-testid="stPopover"] > button {
     background-color: #171717 !important;
     color: #ffffff !important;
     border: 1px solid #555555 !important;
@@ -414,11 +400,18 @@ def spielerprofil_laden(user_id):
             client.table("player_profiles")
             .select("*")
             .eq("user_id", str(user_id))
-            .maybe_single()
+            .limit(1)
             .execute()
         )
 
-        return response.data
+        # Bei einem ganz neuen Konto gibt es möglicherweise noch kein Profil.
+        # In diesem Fall liefern wir ein leeres Profil zurück, statt einen Fehler
+        # auszulösen. Auch eine unerwartet leere Antwort wird sicher behandelt.
+        if response is None:
+            return None
+
+        profile_rows = getattr(response, "data", None) or []
+        return profile_rows[0] if profile_rows else None
 
     except Exception as e:
         st.error(f"Fehler beim Laden des Spielerprofils: {e}")
