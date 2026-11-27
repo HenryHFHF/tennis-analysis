@@ -174,7 +174,21 @@ p, label, span, li, .stMarkdown, [data-testid="stMetricLabel"],
 }
 
 /* Login-Button im Kopfbereich wie alle anderen Buttons */
-.st-key-top_header [data-testid="stPopover"] > button {
+.st-key-top_header [data-testid="stPopover"] button {
+    background-color: #171717 !important;
+    color: #ffffff !important;
+    border: 1px solid #555555 !important;
+    border-radius: 9px !important;
+    font-weight: 700 !important;
+}
+
+.st-key-top_header [data-testid="stPopover"] button * {
+    color: #ffffff !important;
+}
+
+.st-key-top_header [data-testid="stPopover"] button:hover {
+    background-color: #292929 !important;
+}
     background-color: #171717 !important;
     color: #ffffff !important;
     border: 1px solid #555555 !important;
