@@ -480,55 +480,7 @@ def avatar_signierte_url(user_id, avatar_path):
         return None
 
 
-def avatar_hochladen(ziel_user_id, uploaded_file, bisheriger_pfad=None):
-    if uploaded_file is None:
-        st.warning("Bitte wähle zuerst ein Bild aus.")
-        return False
-
-    mime = getattr(uploaded_file, "type", "")
-    if mime not in AVATAR_MIME_TYPES:
-        st.error("Erlaubt sind JPG-, PNG- und WEBP-Bilder.")
-        return False
-
-    bild_bytes = uploaded_file.getvalue()
-    if len(bild_bytes) > AVATAR_MAX_BYTES:
-        st.error("Das Bild darf höchstens 5 MB groß sein.")
-        return False
-
-    if not ist_app_admin() and str(ziel_user_id) != str(
-        st.session_state.supabase_user.id
-    ):
-        st.error("Du darfst nur dein eigenes Profilbild ändern.")
-        return False
-
-    neuer_pfad = f"{ziel_user_id}/avatar.{AVATAR_MIME_TYPES[mime]}"
-
-client.storage.from_(AVATAR_BUCKET).upload
-        gespeichert = spielerprofil_speichern({
-            "user_id": str(ziel_user_id),
-            "avatar_url": neuer_pfad
-        })
-
-        if not gespeichert:
-            try:
-                client.storage.from_(AVATAR_BUCKET).remove([neuer_pfad])
-            except Exception:
-                pass
-            return False
-
-        if bisheriger_pfad and bisheriger_pfad != neuer_pfad and not str(
-            bisheriger_pfad
-        ).startswith(("http://", "https://")):
-            try:
-                client.storage.from_(AVATAR_BUCKET).remove([bisheriger_pfad])
-            except Exception:
-                pass
-
-        return True
-
-    except Exception as e:
-        st.error(f"Das Profilbild konnte nicht hochgeladen werden: {e}")
-        return False
+st.error(f"Das Profilbild konnte nicht hochgeladen werden: {e}")
 
 
 def avatar_loeschen(ziel_user_id, bisheriger_pfad=None):
