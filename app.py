@@ -504,16 +504,24 @@ def avatar_hochladen(ziel_user_id, uploaded_file, bisheriger_pfad=None):
     neuer_pfad = f"{ziel_user_id}/avatar.{AVATAR_MIME_TYPES[mime]}"
 
     try:
-        client = supabase_verbindung(st.session_state.get("supabase_token"))
-        client.storage.from_(AVATAR_BUCKET).upload(
-            neuer_pfad,
-            bild_bytes,
-            {
-                "content-type": mime,
-                "cache-control": "3600",
-                "upsert": "true"
-            }
-        )
+token = st.session_state.get("supabase_token")
+
+if not token:
+    st.error("Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.")
+    return False
+
+client = supabase_verbindung(token)
+
+client.storage.from_(AVATAR_BUCKET).upload(
+    neuer_pfad,
+    bild_bytes,
+    {
+        "content-type": mime,
+        "cache-control": "3600",
+        "upsert": "true",
+        "authorization": f"Bearer {token}"
+    }
+)
 
         gespeichert = spielerprofil_speichern({
             "user_id": str(ziel_user_id),
