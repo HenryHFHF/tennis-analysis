@@ -786,8 +786,160 @@ def admin_spielerprofil_bearbeiten(ziel_user_id):
             st.success("Spielerprofil wurde aktualisiert.")
             st.rerun()
 
-    if st.button("⬅️ Zurück zur Spielersuche", key=f"admin_zurueck_suche_{ziel_user_id}"):
+    if st.button("⬅️ Zurück zum Spielerprofil", key=f"admin_zurueck_profil_{ziel_user_id}"):
+        st.session_state["profil_bearbeiten_aktiv"] = False
+        st.rerun()
+
+
+
+
+def spielerdaten_fuer_profil_laden(user_id):
+    """Lädt nur die Tennisdaten des ausgewählten Spielers für dessen Profilansicht."""
+    try:
+        client = supabase_verbindung(st.session_state.get("supabase_token"))
+        antwort = (
+            client.table("tennis_data")
+            .select("data")
+            .eq("user_id", str(user_id))
+            .limit(1)
+            .execute()
+        )
+        if antwort.data:
+            daten_spieler = antwort.data[0].get("data") or {}
+            return daten_spieler if isinstance(daten_spieler, dict) else {}
+        return {}
+    except Exception as e:
+        st.warning(
+            "Die Spielerstatistiken konnten nicht geladen werden. "
+            "Möglicherweise fehlt noch die Leseberechtigung in Supabase."
+        )
+        return None
+
+
+def spielerprofil_anzeigen(ziel_user_id):
+    """Öffentliche Profilansicht; nur der Admin erhält zusätzlich Bearbeitungsrechte."""
+    aktueller_user = st.session_state.get("supabase_user")
+    ist_admin = bool(
+        aktueller_user and ist_app_admin(getattr(aktueller_user, "id", None))
+    )
+    ist_eigenes_profil = bool(
+        aktueller_user and str(aktueller_user.id) == str(ziel_user_id)
+    )
+
+    profil = spielerprofil_laden(ziel_user_id) or {}
+
+    if not profil:
+        st.error("Dieses Spielerprofil wurde nicht gefunden oder ist nicht erreichbar.")
+        if st.button("⬅️ Zurück zur Spielersuche", key="profil_zurueck_nicht_gefunden"):
+            st.session_state["profil_seite_aktiv"] = False
+            st.session_state.pop("profil_ziel_user_id", None)
+            st.rerun()
+        return
+
+    if not (ist_admin or ist_eigenes_profil or bool(profil.get("is_public", False))):
+        st.error("Dieses Spielerprofil ist nicht öffentlich.")
+        if st.button("⬅️ Zurück zur Spielersuche", key="profil_zurueck_privatsphaere"):
+            st.session_state["profil_seite_aktiv"] = False
+            st.session_state.pop("profil_ziel_user_id", None)
+            st.rerun()
+        return
+
+    vorname = profil.get("first_name") or ""
+    nachname = profil.get("last_name") or ""
+    name = f"{vorname} {nachname}".strip() or "Spielerprofil"
+
+    st.title(f"🎾 {name}")
+    st.caption("Spielerprofil")
+
+    # Profilbild nur anzeigen, wenn ein Bild hinterlegt ist.
+    avatar_url = avatar_signierte_url(str(ziel_user_id), profil.get("avatar_url"))
+    if avatar_url:
+        st.image(avatar_url, width=150)
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if profil.get("club"):
+            st.write("**Verein:**", profil["club"])
+        if profil.get("age_group"):
+            st.write("**Altersklasse:**", profil["age_group"])
+        if profil.get("regional_association"):
+            st.write("**Landesverband:**", profil["regional_association"])
+    with col_b:
+        if profil.get("current_lk"):
+            st.write("**Aktuelle LK:**", profil["current_lk"])
+        if profil.get("highest_lk"):
+            st.write("**Beste LK:**", profil["highest_lk"])
+        if profil.get("playing_hand"):
+            st.write("**Spielhand:**", profil["playing_hand"])
+        if profil.get("backhand"):
+            st.write("**Rückhand:**", profil["backhand"])
+
+    if profil.get("favorite_player"):
+        st.write("**Lieblingsspieler:**", profil["favorite_player"])
+    if profil.get("about_me"):
+        st.subheader("Über mich")
+        st.write(profil["about_me"])
+
+    st.divider()
+    st.subheader("📊 Tennis-Statistiken")
+
+    stats_freigegeben = bool(profil.get("stats_public", False))
+    if ist_admin or ist_eigenes_profil or stats_freigegeben:
+        daten_spieler = spielerdaten_fuer_profil_laden(ziel_user_id)
+
+        if daten_spieler is not None:
+            matches = daten_spieler.get("matches", []) or []
+            siege = sum(1 for m in matches if m.get("ausgang") == "Gewonnen")
+            niederlagen = sum(1 for m in matches if m.get("ausgang") == "Verloren")
+            gewertet = siege + niederlagen
+            quote = (siege / gewertet * 100) if gewertet else 0
+            einzel = sum(1 for m in matches if m.get("art", "Einzel") == "Einzel")
+            doppel = sum(1 for m in matches if m.get("art", "Einzel") == "Doppel")
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Matches", len(matches))
+            m2.metric("Siege", siege)
+            m3.metric("Niederlagen", niederlagen)
+            m4.metric("Siegquote", f"{quote:.1f} %")
+
+            m5, m6 = st.columns(2)
+            m5.metric("Einzel", einzel)
+            m6.metric("Doppel", doppel)
+
+            if matches:
+                st.markdown("**Letzte Matches**")
+                sortierte_matches = sorted(
+                    matches,
+                    key=lambda m: str(m.get("datum") or ""),
+                    reverse=True
+                )
+                for match in sortierte_matches[:5]:
+                    datum = match.get("datum") or "Ohne Datum"
+                    art = match.get("art") or "Einzel"
+                    ausgang = match.get("ausgang") or "Nicht gewertet"
+                    turnier = match.get("turnier") or ""
+                    gegner = match.get("gegner") or ""
+                    beschreibung = f"**{datum}** · {art} · {ausgang}"
+                    if gegner:
+                        beschreibung += f" · Gegner: {gegner}"
+                    if turnier:
+                        beschreibung += f" · {turnier}"
+                    st.markdown(beschreibung)
+            else:
+                st.info("Für diesen Spieler sind noch keine Matches gespeichert.")
+    else:
+        st.info("Dieser Spieler hat seine Statistiken noch nicht öffentlich freigegeben.")
+
+    st.divider()
+
+    if ist_admin and not ist_eigenes_profil:
+        if st.button("✏️ Spielerprofil bearbeiten", key=f"profil_bearbeiten_{ziel_user_id}"):
+            st.session_state["profil_bearbeiten_aktiv"] = True
+            st.rerun()
+
+    if st.button("⬅️ Zurück zur Spielersuche", key=f"profil_zurueck_{ziel_user_id}"):
         st.session_state["profil_seite_aktiv"] = False
+        st.session_state["profil_bearbeiten_aktiv"] = False
         st.session_state.pop("profil_ziel_user_id", None)
         st.rerun()
 
@@ -1149,6 +1301,8 @@ with st.container(key="top_header"):
             if aktueller_user is not None:
                 if st.button(" ", key="open_profile_avatar", help="Mein Spielerprofil"):
                     st.session_state["profil_seite_aktiv"] = True
+                    st.session_state["profil_bearbeiten_aktiv"] = False
+                    st.session_state.pop("profil_ziel_user_id", None)
                     st.rerun()
             else:
                 st.image("logo.png", width=85)
@@ -1435,32 +1589,37 @@ if st.session_state.get("bereich_nav") not in navigationspunkte:
     st.session_state["bereich_nav"] = "🏠 Startseite"
 
 
-def navigation_geaendert():
-    st.session_state["profil_seite_aktiv"] = False
-    st.session_state.pop("profil_ziel_user_id", None)
-
+# Die Navigation wird ohne on_change-Callback verwaltet.
+# So kann ein Klick auf einen Spielernamen den internen Profilaufruf
+# nicht versehentlich durch einen Navigations-Callback zurücksetzen.
 with st.container(key="main_navigation"):
     ausgewaehlter_bereich = st.radio(
         "Navigation",
         navigationspunkte,
         horizontal=True,
         label_visibility="collapsed",
-        key="bereich_nav",
-        on_change=navigation_geaendert
+        key="bereich_nav"
     )
 
-# Die Profilseite ist intern erreichbar, erscheint aber nicht als Navigationsfeld.
-bereich = (
-    "👤 Spielerprofil bearbeiten"
-    if st.session_state.get("profil_seite_aktiv", False)
-       and st.session_state.get("profil_ziel_user_id")
-       and ist_app_admin()
-    else (
-        "👤 Mein Spielerprofil"
-        if st.session_state.get("profil_seite_aktiv", False)
-        else ausgewaehlter_bereich
-    )
-)
+# Nur wenn der Nutzer tatsächlich den Navigationspunkt wechselt,
+# wird ein eventuell geöffnetes fremdes Profil geschlossen.
+letzter_bereich = st.session_state.get("_letzter_bereich_nav")
+if letzter_bereich is not None and ausgewaehlter_bereich != letzter_bereich:
+    st.session_state["profil_seite_aktiv"] = False
+    st.session_state["profil_bearbeiten_aktiv"] = False
+    st.session_state.pop("profil_ziel_user_id", None)
+st.session_state["_letzter_bereich_nav"] = ausgewaehlter_bereich
+
+# Geöffnete Spielerprofile sind intern erreichbar und erscheinen nicht als Navigationsfeld.
+if st.session_state.get("profil_seite_aktiv", False) and st.session_state.get("profil_ziel_user_id"):
+    if st.session_state.get("profil_bearbeiten_aktiv", False) and ist_app_admin():
+        bereich = "👤 Spielerprofil bearbeiten"
+    else:
+        bereich = "👤 Spielerprofil ansehen"
+elif st.session_state.get("profil_seite_aktiv", False):
+    bereich = "👤 Mein Spielerprofil"
+else:
+    bereich = ausgewaehlter_bereich
 
 # =================================
 # 5. STARTSEITE
@@ -3641,6 +3800,14 @@ elif bereich == "📅 Kalender & Planung":
 # 11. MEIN SPIELERPROFIL
 # =================================
 
+elif bereich == "👤 Spielerprofil ansehen":
+
+    ziel_user_id = st.session_state.get("profil_ziel_user_id")
+    if ziel_user_id:
+        spielerprofil_anzeigen(ziel_user_id)
+    else:
+        st.error("Es wurde kein Spieler ausgewählt.")
+
 elif bereich == "👤 Spielerprofil bearbeiten":
 
     ziel_user_id = st.session_state.get("profil_ziel_user_id")
@@ -3671,30 +3838,26 @@ elif bereich == "🔎 Spielersuche":
     aktueller_user = st.session_state.get("supabase_user")
 
     if not aktueller_user:
-
         st.warning("Bitte melde dich zuerst an.")
-
     else:
-
         suchbegriff = st.text_input(
             "Spieler suchen",
             placeholder="Vorname oder Nachname eingeben ..."
         )
 
         try:
-
             token = st.session_state.get("supabase_token")
             client = supabase_verbindung(token)
 
             abfrage = (
                 client.table("player_profiles")
                 .select(
-                    "user_id,first_name,last_name,club,"
-                    "age_group,current_lk,playing_hand,about_me"
+                    "user_id,first_name,last_name,club,age_group,current_lk,"
+                    "playing_hand,about_me,is_public,stats_public"
                 )
             )
 
-            # Der Admin darf auch nicht öffentliche Profile in der Suche finden.
+            # Normale Spieler sehen nur öffentliche Profile; Admin sieht alle.
             if not ist_app_admin():
                 abfrage = abfrage.eq("is_public", True)
 
@@ -3702,108 +3865,86 @@ elif bereich == "🔎 Spielersuche":
             spieler = response.data or []
 
             if suchbegriff.strip():
-
                 suchtext = suchbegriff.strip().casefold()
-
                 spieler = [
                     p for p in spieler
                     if suchtext in (
-                        str(p.get("first_name", "")) + " " +
-                        str(p.get("last_name", ""))
+                        str(p.get("first_name") or "") + " " +
+                        str(p.get("last_name") or "")
                     ).casefold()
                 ]
 
             if spieler:
-
                 st.write(f"**{len(spieler)} Spieler gefunden**")
 
-                for p in spieler:
+                st.markdown(
+                    """
+                    <style>
+                    div[class*="st-key-spielerprofil_oeffnen_"] button {
+                        background: transparent !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        padding: 2px 0 !important;
+                        min-height: 0 !important;
+                        height: auto !important;
+                        width: auto !important;
+                        color: #ffffff !important;
+                        font-size: 1.2rem !important;
+                        font-weight: 700 !important;
+                        text-align: left !important;
+                        justify-content: flex-start !important;
+                        cursor: pointer !important;
+                        text-decoration: underline !important;
+                        text-underline-offset: 4px !important;
+                    }
+                    div[class*="st-key-spielerprofil_oeffnen_"] button:hover {
+                        background: transparent !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        color: #e6e6e6 !important;
+                    }
+                    div[class*="st-key-spielerprofil_oeffnen_"] button p {
+                        margin: 0 !important;
+                        color: inherit !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
 
+                for p in spieler:
                     vorname = p.get("first_name") or ""
                     nachname = p.get("last_name") or ""
+                    ziel_id = str(p.get("user_id") or "")
 
                     with st.container(border=True):
-
-                        if ist_app_admin():
-                            # Der Name funktioniert wie ein Textlink:
-                            # grüne Schrift, Unterstreichung und Hand-Cursor zeigen
-                            # die Klickfunktion, ohne wie ein Button auszusehen.
-                            st.markdown(
-                                """
-                                <style>
-                                div[class*="st-key-spielerprofil_oeffnen_"] button {
-                                    background: transparent !important;
-                                    border: 0 !important;
-                                    box-shadow: none !important;
-                                    padding: 2px 0 !important;
-                                    min-height: 0 !important;
-                                    height: auto !important;
-                                    width: auto !important;
-                                    color: #ffffff !important;
-                                    font-size: 1.2rem !important;
-                                    font-weight: 700 !important;
-                                    text-align: left !important;
-                                    justify-content: flex-start !important;
-                                    cursor: pointer !important;
-                                    text-decoration: underline !important;
-                                    text-underline-offset: 4px !important;
-                                }
-                                div[class*="st-key-spielerprofil_oeffnen_"] button:hover {
-                                    background: transparent !important;
-                                    border: 0 !important;
-                                    box-shadow: none !important;
-                                    color: #e6e6e6 !important;
-                                }
-                                div[class*="st-key-spielerprofil_oeffnen_"] button:focus-visible {
-                                    outline: 2px solid #8fd6a5 !important;
-                                    outline-offset: 4px !important;
-                                }
-                                div[class*="st-key-spielerprofil_oeffnen_"] button p {
-                                    margin: 0 !important;
-                                    color: inherit !important;
-                                }
-                                </style>
-                                """,
-                                unsafe_allow_html=True
-                            )
-
-                            st.button(
-                                f"🎾 {vorname} {nachname}",
-                                key=f"spielerprofil_oeffnen_{p.get('user_id')}",
+                        if ziel_id:
+                            if st.button(
+                                f"🎾 {vorname} {nachname}".strip(),
+                                key=f"spielerprofil_oeffnen_{ziel_id}",
                                 help="Spielerprofil öffnen",
-                                type="tertiary",
-                                on_click=admin_profil_oeffnen,
-                                args=(str(p.get("user_id")),)
-                            )
-                        else:
-                            st.subheader(f"🎾 {vorname} {nachname}")
+                                type="tertiary"
+                            ):
+                                st.session_state["profil_ziel_user_id"] = ziel_id
+                                st.session_state["profil_seite_aktiv"] = True
+                                st.session_state["profil_bearbeiten_aktiv"] = False
+                                st.rerun()
 
                         if p.get("club"):
                             st.write("**Verein:**", p["club"])
-
                         if p.get("age_group"):
                             st.write("**Altersklasse:**", p["age_group"])
-
                         if p.get("current_lk"):
                             st.write("**Aktuelle LK:**", p["current_lk"])
-
                         if p.get("playing_hand"):
                             st.write("**Spielhand:**", p["playing_hand"])
-
                         if p.get("about_me"):
                             st.write(p["about_me"])
-
             else:
-
-                st.info(
-                    "Keine öffentlichen Spielerprofile gefunden."
-                )
+                st.info("Keine öffentlichen Spielerprofile gefunden.")
 
         except Exception as e:
-
-            st.error(
-                f"Die Spielersuche konnte nicht geladen werden: {e}"
-            )
+            st.error(f"Die Spielersuche konnte nicht geladen werden: {e}")
 
 # =================================
 # 10. SIDEBAR
