@@ -461,6 +461,17 @@ def ist_app_admin(user_id=None):
     return bool(admin_id and user_id and str(user_id) == admin_id)
 
 
+def admin_profil_oeffnen(ziel_user_id):
+    """Öffnet das Profil eines Spielers in der internen Admin-Ansicht."""
+    if not ist_app_admin():
+        st.session_state["profil_seite_aktiv"] = False
+        st.session_state.pop("profil_ziel_user_id", None)
+        return
+
+    st.session_state["profil_ziel_user_id"] = str(ziel_user_id)
+    st.session_state["profil_seite_aktiv"] = True
+
+
 def avatar_signierte_url(user_id, avatar_path):
     """Erzeugt für einen privaten Storage-Pfad eine zeitlich begrenzte URL."""
     if not avatar_path:
@@ -3714,50 +3725,56 @@ elif bereich == "🔎 Spielersuche":
                     with st.container(border=True):
 
                         if ist_app_admin():
-                            # Der Name ist selbst der klickbare Profilaufruf.
-                            # CSS entfernt die Button-Optik, die Klickfunktion bleibt erhalten.
+                            # Der Name funktioniert wie ein Textlink:
+                            # grüne Schrift, Unterstreichung und Hand-Cursor zeigen
+                            # die Klickfunktion, ohne wie ein Button auszusehen.
                             st.markdown(
                                 """
                                 <style>
                                 div[class*="st-key-spielerprofil_oeffnen_"] button {
                                     background: transparent !important;
-                                    border: none !important;
+                                    border: 0 !important;
                                     box-shadow: none !important;
-                                    padding: 0 !important;
+                                    padding: 2px 0 !important;
                                     min-height: 0 !important;
-                                    color: inherit !important;
-                                    font-size: 1.25rem !important;
-                                    font-weight: 650 !important;
+                                    height: auto !important;
+                                    width: auto !important;
+                                    color: #ffffff !important;
+                                    font-size: 1.2rem !important;
+                                    font-weight: 700 !important;
                                     text-align: left !important;
+                                    justify-content: flex-start !important;
+                                    cursor: pointer !important;
+                                    text-decoration: underline !important;
+                                    text-underline-offset: 4px !important;
                                 }
                                 div[class*="st-key-spielerprofil_oeffnen_"] button:hover {
                                     background: transparent !important;
-                                    border: none !important;
+                                    border: 0 !important;
                                     box-shadow: none !important;
-                                    color: #2E8B57 !important;
+                                    color: #e6e6e6 !important;
                                 }
-                                div[class*="st-key-spielerprofil_oeffnen_"] button:focus {
-                                    box-shadow: none !important;
-                                    outline: 2px solid #2E8B57 !important;
-                                    outline-offset: 3px !important;
+                                div[class*="st-key-spielerprofil_oeffnen_"] button:focus-visible {
+                                    outline: 2px solid #8fd6a5 !important;
+                                    outline-offset: 4px !important;
                                 }
                                 div[class*="st-key-spielerprofil_oeffnen_"] button p {
                                     margin: 0 !important;
+                                    color: inherit !important;
                                 }
                                 </style>
                                 """,
                                 unsafe_allow_html=True
                             )
 
-                            if st.button(
+                            st.button(
                                 f"🎾 {vorname} {nachname}",
                                 key=f"spielerprofil_oeffnen_{p.get('user_id')}",
                                 help="Spielerprofil öffnen",
-                                type="tertiary"
-                            ):
-                                st.session_state["profil_ziel_user_id"] = str(p.get("user_id"))
-                                st.session_state["profil_seite_aktiv"] = True
-                                st.rerun()
+                                type="tertiary",
+                                on_click=admin_profil_oeffnen,
+                                args=(str(p.get("user_id")),)
+                            )
                         else:
                             st.subheader(f"🎾 {vorname} {nachname}")
 
