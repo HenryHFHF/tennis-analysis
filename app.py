@@ -3884,12 +3884,12 @@ elif bereich == "🔎 Spielersuche":
                         background: transparent !important;
                         border: 0 !important;
                         box-shadow: none !important;
-                        padding: 2px 0 !important;
+                        padding: 5px 0 !important;
                         min-height: 0 !important;
                         height: auto !important;
                         width: auto !important;
                         color: #ffffff !important;
-                        font-size: 1.2rem !important;
+                        font-size: 1.6rem !important;
                         font-weight: 700 !important;
                         text-align: left !important;
                         justify-content: flex-start !important;
