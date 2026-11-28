@@ -636,6 +636,151 @@ def avatar_verwaltung_feld(ziel_user_id, profil, prefix, ueberschrift):
                 st.rerun()
 
 
+def admin_spielerprofil_bearbeiten(ziel_user_id):
+    """Erlaubt ausschließlich dem konfigurierten App-Admin, ein fremdes Profil zu bearbeiten."""
+    aktueller_user = st.session_state.get("supabase_user")
+
+    if not aktueller_user or not ist_app_admin(getattr(aktueller_user, "id", None)):
+        st.error("Du hast keine Berechtigung, dieses Spielerprofil zu bearbeiten.")
+        return
+
+    profil = spielerprofil_laden(ziel_user_id) or {}
+
+    st.title("👤 Spielerprofil bearbeiten")
+    st.caption("Administratoransicht – Änderungen werden im Profil dieses Spielers gespeichert.")
+
+    if profil.get("first_name") or profil.get("last_name"):
+        st.subheader(
+            f"{profil.get('first_name') or ''} {profil.get('last_name') or ''}".strip()
+        )
+
+    avatar_verwaltung_feld(
+        str(ziel_user_id), profil, "admin_profil", "Profilbild dieses Spielers"
+    )
+    st.divider()
+
+    with st.form(f"admin_spielerprofil_formular_{ziel_user_id}"):
+        st.subheader("Persönliche Daten")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            vorname = st.text_input("Vorname", value=profil.get("first_name") or "")
+            nachname = st.text_input("Nachname", value=profil.get("last_name") or "")
+            geburtsjahr = st.text_input(
+                "Geburtsjahr", value=str(profil.get("birth_year") or "")
+            )
+            geschlecht_optionen = ["", "Männlich", "Weiblich", "Divers", "Keine Angabe"]
+            geschlecht_alt = profil.get("gender") or ""
+            geschlecht = st.selectbox(
+                "Geschlecht", geschlecht_optionen,
+                index=(geschlecht_optionen.index(geschlecht_alt)
+                       if geschlecht_alt in geschlecht_optionen else 0),
+                key=f"admin_gender_{ziel_user_id}"
+            )
+
+        with col2:
+            verein = st.text_input("Verein", value=profil.get("club") or "")
+            verband = st.text_input(
+                "Landesverband", value=profil.get("regional_association") or ""
+            )
+            altersklasse = st.text_input(
+                "Altersklasse", value=profil.get("age_group") or ""
+            )
+
+        st.divider()
+        st.subheader("Tennis-Daten")
+        col3, col4 = st.columns(2)
+
+        with col3:
+            aktuelle_lk = st.text_input(
+                "Aktuelle LK", value=profil.get("current_lk") or ""
+            )
+            hoechste_lk = st.text_input(
+                "Beste LK", value=profil.get("highest_lk") or ""
+            )
+            spielhand_optionen = ["", "Rechts", "Links"]
+            spielhand_alt = profil.get("playing_hand") or ""
+            spielhand = st.selectbox(
+                "Spielhand", spielhand_optionen,
+                index=(spielhand_optionen.index(spielhand_alt)
+                       if spielhand_alt in spielhand_optionen else 0),
+                key=f"admin_playing_hand_{ziel_user_id}"
+            )
+
+        with col4:
+            rueckhand_optionen = ["", "Einhändig", "Beidhändig"]
+            rueckhand_alt = profil.get("backhand") or ""
+            rueckhand = st.selectbox(
+                "Rückhand", rueckhand_optionen,
+                index=(rueckhand_optionen.index(rueckhand_alt)
+                       if rueckhand_alt in rueckhand_optionen else 0),
+                key=f"admin_backhand_{ziel_user_id}"
+            )
+            lieblingsspieler = st.text_input(
+                "Lieblingsspieler", value=profil.get("favorite_player") or ""
+            )
+
+        st.divider()
+        ueber_mich = st.text_area(
+            "Über mich", value=profil.get("about_me") or "",
+            key=f"admin_about_me_{ziel_user_id}"
+        )
+
+        st.divider()
+        profil_oeffentlich = st.checkbox(
+            "Profil für andere Spieler sichtbar machen",
+            value=bool(profil.get("is_public", False)),
+            key=f"admin_public_{ziel_user_id}"
+        )
+        statistiken_oeffentlich = st.checkbox(
+            "Statistiken für andere Spieler freigeben",
+            value=bool(profil.get("stats_public", False)),
+            key=f"admin_stats_public_{ziel_user_id}"
+        )
+
+        gespeichert = st.form_submit_button(
+            "💾 Änderungen speichern", use_container_width=True
+        )
+
+    if gespeichert:
+        if geburtsjahr.strip():
+            if not geburtsjahr.strip().isdigit() or len(geburtsjahr.strip()) != 4:
+                st.error("Bitte gib ein gültiges, vierstelliges Geburtsjahr ein.")
+                return
+            geburtsjahr_wert = int(geburtsjahr.strip())
+        else:
+            geburtsjahr_wert = None
+
+        neue_daten = {
+            "user_id": str(ziel_user_id),
+            "first_name": vorname.strip(),
+            "last_name": nachname.strip(),
+            "birth_year": geburtsjahr_wert,
+            "gender": geschlecht,
+            "club": verein.strip(),
+            "regional_association": verband.strip(),
+            "age_group": altersklasse.strip(),
+            "current_lk": aktuelle_lk.strip(),
+            "highest_lk": hoechste_lk.strip(),
+            "playing_hand": spielhand,
+            "backhand": rueckhand,
+            "favorite_player": lieblingsspieler.strip(),
+            "avatar_url": profil.get("avatar_url"),
+            "about_me": ueber_mich.strip(),
+            "is_public": profil_oeffentlich,
+            "stats_public": statistiken_oeffentlich
+        }
+
+        if spielerprofil_speichern(neue_daten):
+            st.success("Spielerprofil wurde aktualisiert.")
+            st.rerun()
+
+    if st.button("⬅️ Zurück zur Spielersuche", key=f"admin_zurueck_suche_{ziel_user_id}"):
+        st.session_state["profil_seite_aktiv"] = False
+        st.session_state.pop("profil_ziel_user_id", None)
+        st.rerun()
+
+
 def mein_spielerprofil(user):
     st.title("👤 Mein Spielerprofil")
     st.caption("Hier kannst du deine persönlichen Spielerdaten verwalten.")
@@ -1281,6 +1426,7 @@ if st.session_state.get("bereich_nav") not in navigationspunkte:
 
 def navigation_geaendert():
     st.session_state["profil_seite_aktiv"] = False
+    st.session_state.pop("profil_ziel_user_id", None)
 
 with st.container(key="main_navigation"):
     ausgewaehlter_bereich = st.radio(
@@ -1294,9 +1440,15 @@ with st.container(key="main_navigation"):
 
 # Die Profilseite ist intern erreichbar, erscheint aber nicht als Navigationsfeld.
 bereich = (
-    "👤 Mein Spielerprofil"
+    "👤 Spielerprofil bearbeiten"
     if st.session_state.get("profil_seite_aktiv", False)
-    else ausgewaehlter_bereich
+       and st.session_state.get("profil_ziel_user_id")
+       and ist_app_admin()
+    else (
+        "👤 Mein Spielerprofil"
+        if st.session_state.get("profil_seite_aktiv", False)
+        else ausgewaehlter_bereich
+    )
 )
 
 # =================================
@@ -3478,6 +3630,14 @@ elif bereich == "📅 Kalender & Planung":
 # 11. MEIN SPIELERPROFIL
 # =================================
 
+elif bereich == "👤 Spielerprofil bearbeiten":
+
+    ziel_user_id = st.session_state.get("profil_ziel_user_id")
+    if ziel_user_id and ist_app_admin():
+        admin_spielerprofil_bearbeiten(ziel_user_id)
+    else:
+        st.error("Dieses Spielerprofil kann nicht geöffnet werden.")
+
 elif bereich == "👤 Mein Spielerprofil":
 
     aktueller_user = st.session_state.get("supabase_user")
@@ -3515,16 +3675,19 @@ elif bereich == "🔎 Spielersuche":
             token = st.session_state.get("supabase_token")
             client = supabase_verbindung(token)
 
-            response = (
+            abfrage = (
                 client.table("player_profiles")
                 .select(
                     "user_id,first_name,last_name,club,"
                     "age_group,current_lk,playing_hand,about_me"
                 )
-                .eq("is_public", True)
-                .execute()
             )
 
+            # Der Admin darf auch nicht öffentliche Profile in der Suche finden.
+            if not ist_app_admin():
+                abfrage = abfrage.eq("is_public", True)
+
+            response = abfrage.execute()
             spieler = response.data or []
 
             if suchbegriff.strip():
@@ -3550,9 +3713,53 @@ elif bereich == "🔎 Spielersuche":
 
                     with st.container(border=True):
 
-                        st.subheader(
-                            f"🎾 {vorname} {nachname}"
-                        )
+                        if ist_app_admin():
+                            # Der Name ist selbst der klickbare Profilaufruf.
+                            # CSS entfernt die Button-Optik, die Klickfunktion bleibt erhalten.
+                            st.markdown(
+                                """
+                                <style>
+                                div[class*="st-key-spielerprofil_oeffnen_"] button {
+                                    background: transparent !important;
+                                    border: none !important;
+                                    box-shadow: none !important;
+                                    padding: 0 !important;
+                                    min-height: 0 !important;
+                                    color: inherit !important;
+                                    font-size: 1.25rem !important;
+                                    font-weight: 650 !important;
+                                    text-align: left !important;
+                                }
+                                div[class*="st-key-spielerprofil_oeffnen_"] button:hover {
+                                    background: transparent !important;
+                                    border: none !important;
+                                    box-shadow: none !important;
+                                    color: #2E8B57 !important;
+                                }
+                                div[class*="st-key-spielerprofil_oeffnen_"] button:focus {
+                                    box-shadow: none !important;
+                                    outline: 2px solid #2E8B57 !important;
+                                    outline-offset: 3px !important;
+                                }
+                                div[class*="st-key-spielerprofil_oeffnen_"] button p {
+                                    margin: 0 !important;
+                                }
+                                </style>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                            if st.button(
+                                f"🎾 {vorname} {nachname}",
+                                key=f"spielerprofil_oeffnen_{p.get('user_id')}",
+                                help="Spielerprofil öffnen",
+                                type="tertiary"
+                            ):
+                                st.session_state["profil_ziel_user_id"] = str(p.get("user_id"))
+                                st.session_state["profil_seite_aktiv"] = True
+                                st.rerun()
+                        else:
+                            st.subheader(f"🎾 {vorname} {nachname}")
 
                         if p.get("club"):
                             st.write("**Verein:**", p["club"])
